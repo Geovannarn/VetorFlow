@@ -1,13 +1,14 @@
 import pandas as pd
 
-from database.connection import conectar
-
+from src.vetorflow.database.connection import conectar
 
 def carregar_csv(caminho):
     dados = pd.read_csv(caminho, sep=";")
 
     dados["data_cadastro"] = pd.to_datetime(
         dados["data_cadastro"],
+        format="mixed",
+        dayfirst=True,
         errors="coerce"
     )
 
