@@ -3,7 +3,9 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from src.vetorflow.database.connection import conectar
-@api_view(["GET", "POST"])
+
+
+@api_view(["GET", "POST", "PUT", "DELETE"])
 def clientes(request, id_cliente=None):
 
     if request.method == "GET":
@@ -79,6 +81,7 @@ def clientes(request, id_cliente=None):
         finally:
             conexao.close()
 
+
     if request.method == "POST":
         dados = request.data
 
@@ -139,6 +142,104 @@ def clientes(request, id_cliente=None):
 
             return Response(
                 {"erro": "Não foi possível criar o cliente."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        finally:
+            conexao.close()
+
+    if request.method == "PUT":
+        dados = request.data
+
+        conexao = conectar()
+
+        try:
+            with conexao.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE usuarios
+                    SET
+                        razao_social = %s,
+                        cnpj = %s,
+                        telefone = %s,
+                        email = %s,
+                        bairro = %s,
+                        cep = %s,
+                        cidade = %s,
+                        uf = %s,
+                        cadastro = %s,
+                        responsavel = %s
+                    WHERE id_cliente = %s
+                    """,
+                    (
+                        dados.get("razao_social"),
+                        dados.get("cnpj"),
+                        dados.get("telefone"),
+                        dados.get("email"),
+                        dados.get("bairro"),
+                        dados.get("cep"),
+                        dados.get("cidade"),
+                        dados.get("uf"),
+                        dados.get("cadastro"),
+                        dados.get("responsavel"),
+                        id_cliente,
+                    )
+                )
+
+                if cursor.rowcount == 0:
+                    return Response(
+                        {"erro": "Cliente não encontrado."},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            conexao.commit()
+
+            return Response(
+                {"mensagem": "Cliente atualizado com sucesso."},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception:
+            conexao.rollback()
+
+            return Response(
+                {"erro": "Não foi possível atualizar o cliente."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        finally:
+            conexao.close()
+
+    if request.method == "DELETE":
+        conexao = conectar()
+
+        try:
+            with conexao.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM usuarios
+                    WHERE id_cliente = %s
+                    """,
+                    (id_cliente,)
+                )
+
+                if cursor.rowcount == 0:
+                    return Response(
+                        {"erro": "Cliente não encontrado."},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            conexao.commit()
+
+            return Response(
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        except Exception:
+            conexao.rollback()
+
+            return Response(
+                {"erro": "Não foi possível excluir o cliente."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
