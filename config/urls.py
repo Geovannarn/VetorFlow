@@ -3,5 +3,5 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('src.vetorflow.api.routes')),
+    path('api/', include('api.routes')),
 ]

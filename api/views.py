@@ -2,8 +2,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-from src.vetorflow.database.connection import conectar
-@api_view(["GET", "POST"])
+from database.connection import conectar
+
 def clientes(request, id_cliente=None):
 
     if request.method == "GET":

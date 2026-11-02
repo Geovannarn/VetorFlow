@@ -2,7 +2,6 @@ import pandas as pd
 
 from database.connection import conectar
 
-
 def carregar_csv(caminho):
     dados = pd.read_csv(caminho, sep=";")
 
