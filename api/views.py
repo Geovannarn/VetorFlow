@@ -4,6 +4,8 @@ from rest_framework import status
 
 from database.connection import conectar
 
+
+@api_view(["GET", "POST", "PUT", "DELETE"])
 def clientes(request, id_cliente=None):
 
     if request.method == "GET":

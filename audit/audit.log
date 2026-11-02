@@ -1,0 +1,3 @@
+2026-11-01T20:37:43.225528 | GET | /api/clientes/ | None | sucesso
+2026-11-01T20:38:09.060720 | GET | /api/clientes/TESTE004/ | TESTE004 | sucesso
+2026-11-01T20:38:11.759020 | DELETE | /api/clientes/TESTE004/ | TESTE004 | sucesso
