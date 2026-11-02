@@ -7,6 +7,8 @@ def carregar_csv(caminho):
 
     dados["data_cadastro"] = pd.to_datetime(
         dados["data_cadastro"],
+        format="mixed",
+        dayfirst=True,
         errors="coerce"
     )
 
