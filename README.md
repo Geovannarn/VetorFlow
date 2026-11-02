@@ -15,11 +15,17 @@ O fluxo desenvolvido contempla desde a entrada dos dados até seu armazenamento 
 ## Tecnologias
 
 **Python** — desenvolvimento do processamento e das regras de tratamento
+
 **Pandas** — leitura e processamento dos dados
+
 **Django** — estrutura da aplicação
+
 **Django REST Framework** — desenvolvimento da API REST
+
 **PostgreSQL** — armazenamento dos dados
+
 **Pytest** — testes automatizados
+
 **Git / GitHub** — versionamento do projeto
 
 ## Arquitetura do fluxo
