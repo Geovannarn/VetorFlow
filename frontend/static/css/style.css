@@ -595,16 +595,6 @@ body.splash-aberta { overflow: hidden; }
   animation-delay: .95s;
 }
 
-.splash__sub {
-  margin: 0;
-  font: 400 .75rem/1.4 var(--mono);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: #a9a9b1;
-  opacity: 0;
-  animation: splash-fade .6s ease 1.5s forwards;
-}
-
 .splash__pular {
   position: absolute;
   right: var(--pad-pagina);
