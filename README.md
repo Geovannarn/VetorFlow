@@ -4,75 +4,75 @@ Sistema desenvolvido para tratamento, validação, enriquecimento e armazenament
 
 O VetorFlow implementa um fluxo de processamento de dados a partir de uma base CSV, realizando normalização de campos, validações de qualidade, enriquecimento por meio de APIs externas, tratamento de inconsistências e persistência dos dados em PostgreSQL.
 
-O projeto também disponibiliza uma API REST para gerenciamento dos registros de clientes.
+O projeto também disponibiliza uma API REST para gerenciamento dos registros de clientes e uma interface web para interação com o sistema.
 
 ## Objetivo
 
 O projeto tem como objetivo estruturar um processo de tratamento de dados capaz de lidar com inconsistências presentes na base original, mantendo critérios definidos para normalização, validação, enriquecimento e resolução de divergências.
 
-O fluxo desenvolvido contempla desde a entrada dos dados até seu armazenamento e disponibilização por meio da API.
+O fluxo desenvolvido contempla desde a entrada dos dados até seu armazenamento e disponibilização por meio da API REST.
 
 ## Tecnologias
 
-**Python** — desenvolvimento do processamento e das regras de tratamento
-
-**Pandas** — leitura e processamento dos dados
-
-**Django** — estrutura da aplicação
-
-**Django REST Framework** — desenvolvimento da API REST
-
-**PostgreSQL** — armazenamento dos dados
-
-**Pytest** — testes automatizados
-
-**Git / GitHub** — versionamento do projeto
+**Python** — desenvolvimento do processamento e das regras de tratamento.
+**Pandas** — leitura e processamento dos dados.
+**Django** — estrutura da aplicação.
+**Django REST Framework** — desenvolvimento da API REST.
+**PostgreSQL** — armazenamento dos dados.
+**Pytest** — testes automatizados.
+**HTML, CSS e JavaScript** — desenvolvimento da interface web.
+**Git / GitHub** — versionamento do projeto.
 
 ## Arquitetura do fluxo
 
 ```text
-                    ┌─────────────────┐
-                    │     CSV         │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │   Normalização  │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │    Validação    │
-                    │   e Qualidade   │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │  Enriquecimento │
-                    │    por CEP      │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │    Bairros      │
-                    │ Normalização /  │
-                    │    Resolução    │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │    Auditoria    │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │   PostgreSQL    │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │    API REST     │
-                    └─────────────────┘
+                   ┌─────────────────┐
+                   │       CSV       │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │  Normalização   │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │    Validação    │
+                   │   e Qualidade   │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │ Enriquecimento  │
+                   │     por CEP     │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │    Bairros      │
+                   │ Normalização /  │
+                   │    Resolução    │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │    Auditoria    │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │   PostgreSQL    │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │    API REST     │
+                   └────────┬────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │    Frontend     │
+                   └─────────────────┘
 ```
 
 ## Processamento dos dados
@@ -83,12 +83,12 @@ O processamento é organizado em etapas específicas para cada responsabilidade.
 
 Foram implementados normalizadores para diferentes campos da base:
 
-CNPJ
-Data
-E-mail
-Telefone
-Texto
-CEP
+CNPJ;
+Data;
+E-mail;
+Telefone;
+Texto;
+CEP.
 
 O objetivo é reduzir diferenças de formatação e estabelecer um padrão para os dados antes das etapas seguintes.
 
@@ -102,18 +102,17 @@ Os valores são validados e normalizados para um padrão de oito dígitos, consi
 
 O enriquecimento dos dados de CEP utiliza:
 
-**ViaCEP**
-**BrasilAPI**
-
-A ViaCEP é utilizada como fonte principal e a BrasilAPI como alternativa.
+**ViaCEP:** utilizada como fonte principal de consulta.
+**BrasilAPI:** utilizada como alternativa.
 
 O projeto também possui um mecanismo de cache local para evitar consultas repetidas para CEPs já processados.
 
 ## Tratamento de bairros
 
-O tratamento dos bairros está separado no diretório `neighborhood`.
+O tratamento dos bairros está separado no diretório `neighborhood/`.
 
 A etapa de normalização padroniza os nomes para permitir comparações entre diferentes representações do mesmo bairro.
+
 Na etapa de resolução, o bairro informado no cadastro é comparado com o bairro retornado pela API.
 
 Os resultados podem ser classificados como:
@@ -132,18 +131,24 @@ O projeto possui verificações específicas para avaliar a qualidade da base pr
 
 Entre os checks implementados estão:
 
-identificação de colunas obrigatórias ausentes;
-identificação de valores nulos;
-identificação de registros duplicados;
-verificação da existência de registros.
+Identificação de colunas obrigatórias ausentes;
+Identificação de valores nulos;
+Identificação de registros duplicados;
+Verificação da existência de registros.
 
 A partir dos resultados dos checks, são calculadas métricas como:
 
-total de registros;
-total de valores nulos;
-total de registros duplicados;
-percentual de nulos;
-percentual de duplicados.
+Total de registros;
+Total de valores nulos;
+Total de registros duplicados;
+Percentual de nulos;
+Percentual de duplicados.
+
+## Auditoria
+
+O projeto possui um módulo de auditoria, localizado em `audit/`, destinado ao registro das operações realizadas durante o processamento dos dados.
+
+Esse módulo permite manter registros relacionados às alterações e ao tratamento das informações, contribuindo para o acompanhamento do processamento.
 
 ## Banco de dados
 
@@ -168,7 +173,7 @@ DB_USER=usuario
 DB_PASSWORD=senha
 ```
 
-O arquivo `.env` não deve ser versionado.
+O arquivo `.env` não deve ser versionado. O projeto disponibiliza um `.env.example` como referência para configuração das variáveis necessárias.
 
 ## API REST
 
@@ -185,6 +190,12 @@ A API foi desenvolvida utilizando Django REST Framework e permite o gerenciament
 
 A API utiliza a conexão com o PostgreSQL para realizar as operações sobre os registros.
 
+## Frontend
+
+O projeto possui uma interface web localizada no diretório `frontend/`.
+
+A interface permite a interação com as funcionalidades disponibilizadas pelo sistema, integrando a apresentação das informações com os recursos de processamento e gerenciamento de clientes.
+
 ## Testes automatizados
 
 Os testes automatizados são executados utilizando **Pytest**.
@@ -198,50 +209,68 @@ pytest
 Os testes abrangem diferentes partes do projeto, incluindo:
 
 API;
-integração de CEP;
-carregamento dos dados;
-verificações de qualidade.
+Integração de CEP;
+Carregamento dos dados;
+Verificações de qualidade.
 
 ## Estrutura do projeto
 
 ```text
 VetorFlow/
+├── .idea/
+├── .pytest_cache/
+├── .venv/
 ├── api/
 ├── audit/
 ├── config/
 ├── data/
 ├── database/
 ├── docs/
+├── frontend/
 ├── integrations/
 ├── neighborhood/
 ├── normalizers/
 ├── pipeline/
+├── src/
 ├── test/
 ├── .env
 ├── .env.example
 ├── .gitignore
-├── manage.py
+├── db.sqlite3
+├── exceptions.py
+├── logging_config.py
 ├── Makefile
+├── manage.py
 ├── pytest.ini
 ├── README.md
-└── requirements.txt
+├── Relatório_tradeoffs.md
+├── requirements.txt
+└── settings.py
 ```
 
-### Responsabilidades dos diretórios
+### Responsabilidades dos diretórios e arquivos
 
-| Diretório | Responsabilidade |
+| Diretório/arquivo | Responsabilidade |
 |---|---|
 | `api/` | Endpoints e componentes da API REST |
 | `audit/` | Registros de auditoria |
-| `config/` | Configurações do Django |
-| `data/` | Dados utilizados no processamento |
+| `config/` | Configurações do projeto Django |
+| `data/` | Arquivos utilizados no processamento |
 | `database/` | Conexão e acesso ao PostgreSQL |
-| `docs/` | Documentação complementar |
-| `integrations/` | Integrações externas e cache |
+| `docs/` | Documentação técnica complementar |
+| `frontend/` | Arquivos da interface web |
+| `integrations/` | Integrações externas e mecanismo de cache |
 | `neighborhood/` | Normalização e resolução de bairros |
-| `normalizers/` | Normalização dos campos |
+| `normalizers/` | Normalização dos campos cadastrais |
 | `pipeline/` | Processamento, carregamento e qualidade dos dados |
+| `src/` | Organização do código-fonte |
 | `test/` | Testes automatizados |
+| `manage.py` | Ponto de entrada para comandos administrativos do Django |
+| `pytest.ini` | Configurações do Pytest |
+| `requirements.txt` | Dependências do projeto |
+| `.env` | Variáveis de ambiente locais |
+| `.env.example` | Modelo de configuração das variáveis de ambiente |
+| `Relatório_tradeoffs.md` | Documentação das decisões e dos trade-offs do projeto |
 
 ## Configuração
 
@@ -260,29 +289,29 @@ No Windows:
 python -m venv .venv
 ```
 
-Ativação:
+### 3. Ativar o ambiente virtual
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 3. Instalar as dependências
+### 4. Instalar as dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configurar as variáveis de ambiente
+### 5. Configurar as variáveis de ambiente
 
-Crie o arquivo `.env` na raiz do projeto e configure os dados de conexão com o PostgreSQL.
+Crie o arquivo `.env` na raiz do projeto e configure os dados de conexão com o PostgreSQL, utilizando o `.env.example` como referência.
 
-### 5. Verificar a configuração do Django
+### 6. Verificar a configuração do Django
 
 ```bash
 python manage.py check
 ```
 
-### 6. Executar os testes
+### 7. Executar os testes
 
 ```bash
 pytest
@@ -295,11 +324,14 @@ O desenvolvimento foi organizado utilizando Git e GitHub.
 As funcionalidades foram separadas em branches de acordo com suas responsabilidades, como:
 
 ```text
-feature/database-integration
+feature/database-schema
 feature/field-normalizers
-feature/data-quality
+feature/postal-code-enrichment
 feature/neighborhood-normalization
 feature/neighborhood-resolver
+feature/audit-trail
+feature/pipeline-and-load
+feature/data-quality
 feature/rest-api
 ```
 
@@ -323,11 +355,14 @@ Em Testes
 Concluído
 ```
 
+Essa organização permitiu acompanhar o andamento das atividades, visualizar as tarefas pendentes e controlar a evolução das funcionalidades durante o desenvolvimento.
+
 ## Documentação
 
-A documentação complementar do projeto está disponível na raiz. O  relatório de trade-offs,  apresenta as principais decisões tomadas durante o desenvolvimento, os critérios utilizados e os pontos considerados na implementação das soluções.
+A documentação complementar está organizada no diretório `docs/`.
+
+O projeto também possui o arquivo `Relatório_tradeoffs.md`, que apresenta as principais decisões tomadas durante o desenvolvimento, os critérios utilizados e os pontos considerados na implementação das soluções.
 
 ---
 
-**VetorFlow**  
-Projeto acadêmico
+**VetorFlow**
