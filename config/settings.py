@@ -25,8 +25,11 @@ SECRET_KEY = 'django-insecure-23c2od9l(slm#7jsdcbp@fc2n$zm2t_w(=&^u3a4v^j3rcj0au
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "vetorflow.onrender.com",
+]
 
 # Application definition
 
