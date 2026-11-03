@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>primora. · Consulta de CEP e importação de clientes</title>
+  <meta name="description" content="Consulta de CEP com ViaCEP, BrasilAPI e cache, e importação de clientes com limpeza de CNPJ, telefone, CEP e data.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/style.css">
+  <script src="../static/css/js/script.js" defer></script>
+</head>
+<body>
+
+  <!-- ========== ABERTURA ========== -->
+  <div class="splash" id="splash">
+    <p class="splash__nome" aria-label="primora.">
+      <span aria-hidden="true" style="--i:0">p</span><span aria-hidden="true" style="--i:1">r</span><span aria-hidden="true" style="--i:2">i</span><span aria-hidden="true" style="--i:3">m</span><span aria-hidden="true" style="--i:4">o</span><span aria-hidden="true" style="--i:5">r</span><span aria-hidden="true" style="--i:6">a</span><span class="splash__ponto" aria-hidden="true" style="--i:7">.</span>
+    </p>
+    <p class="splash__sub">Consulta de CEP e importação de clientes</p>
+    <button class="splash__pular" type="button" id="splash-pular">Pular <span aria-hidden="true">→</span></button>
+  </div>
+
+  <div class="topbar" aria-hidden="true"></div>
+
+  <header class="cabecalho">
+    <a class="logo" href="#consulta" aria-label="primora, ir para o início">primora<span>.</span></a>
+    <nav class="menu" aria-label="Principal">
+      <a href="#inicio" data-alvo="inicio" aria-current="true">Início</a>
+      <a href="#consulta" data-alvo="consulta">Consulta</a>
+      <a href="#importacao" data-alvo="importacao">Importação</a>
+      <a href="#regras" data-alvo="regras">Regras</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ========== INÍCIO ========== -->
+    <section class="secao secao--inicio" id="inicio" aria-labelledby="titulo-inicio">
+      <div class="grade">
+
+        <div class="coluna">
+          <p class="rotulo">Início</p>
+          <h1 class="titulo titulo--grande" id="titulo-inicio">Endereços e clientes, sem sujeira.</h1>
+          <p class="lead lead--larga">Consulte qualquer CEP em segundos e limpe a sua base de clientes antes de importar.</p>
+
+          <div class="inicio__acoes">
+            <a class="btn" href="#consulta">Consultar CEP <span aria-hidden="true">→</span></a>
+            <a class="btn btn--contorno" href="#importacao">Importar clientes</a>
+          </div>
+        </div>
+
+        <nav class="atalhos" aria-label="Atalhos">
+          <a class="atalho" href="#consulta">
+            <span class="atalho__num" aria-hidden="true">01</span>
+            <span class="atalho__corpo">
+              <strong>Consulta de CEP</strong>
+              <span>ViaCEP primeiro, BrasilAPI de reserva. O que já foi consultado fica em cache.</span>
+            </span>
+            <span class="atalho__seta" aria-hidden="true">→</span>
+          </a>
+          <a class="atalho" href="#importacao">
+            <span class="atalho__num" aria-hidden="true">02</span>
+            <span class="atalho__corpo">
+              <strong>Importar clientes</strong>
+              <span>Envie um CSV e limpe CNPJ, telefone, CEP e data de uma vez.</span>
+            </span>
+            <span class="atalho__seta" aria-hidden="true">→</span>
+          </a>
+          <a class="atalho" href="#regras">
+            <span class="atalho__num" aria-hidden="true">03</span>
+            <span class="atalho__corpo">
+              <strong>Regras de limpeza</strong>
+              <span>Veja o que cada campo aceita e como fica depois.</span>
+            </span>
+            <span class="atalho__seta" aria-hidden="true">→</span>
+          </a>
+        </nav>
+
+      </div>
+    </section>
+
+    <!-- ========== CONSULTA DE CEP ========== -->
+    <section class="secao" id="consulta" aria-labelledby="titulo-consulta">
+      <div class="grade">
+
+        <div class="coluna">
+          <p class="rotulo">Consulta</p>
+          <h2 class="titulo" id="titulo-consulta">Consulta de CEP</h2>
+          <p class="lead">Tenta o ViaCEP até três vezes e recorre à BrasilAPI. O que já foi consultado fica em cache.</p>
+
+          <form class="form" id="form-cep" novalidate>
+            <label class="campo__rotulo" for="cep">CEP</label>
+            <input class="campo__entrada" id="cep" name="cep" type="text"
+                   inputmode="numeric" autocomplete="postal-code" spellcheck="false"
+                   maxlength="9" placeholder="00000-000" value="01310-100"
+                   aria-describedby="cep-erro">
+            <p class="campo__erro" id="cep-erro" role="alert" hidden></p>
+
+            <div class="form__acoes">
+              <label class="check">
+                <input type="checkbox" id="usar-cache" checked>
+                <span>Usar cache</span>
+              </label>
+              <button class="btn" type="submit" id="btn-consultar">
+                Consultar <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <article class="cartao" id="cartao" aria-live="polite" aria-busy="false">
+          <header class="cartao__topo">
+            <span>Endereço</span>
+            <span id="fonte">Fonte: —</span>
+          </header>
+
+          <div class="cartao__corpo" id="dados">
+            <p class="cartao__cep" aria-label="CEP">
+              <span id="cep-a">00000</span><b>-</b><span id="cep-b">000</span>
+            </p>
+            <p class="cartao__rua" id="out-rua">Aguardando consulta</p>
+            <dl class="meta">
+              <div><dt>Bairro</dt><dd id="out-bairro">—</dd></div>
+              <div><dt>Cidade</dt><dd id="out-cidade">—</dd></div>
+              <div><dt>UF</dt><dd id="out-uf">—</dd></div>
+              <div><dt>DDD</dt><dd id="out-ddd">—</dd></div>
+              <div><dt>IBGE</dt><dd id="out-ibge">—</dd></div>
+            </dl>
+            <svg class="barras" id="barras" viewBox="0 0 300 40" preserveAspectRatio="none"
+                 aria-hidden="true" focusable="false"></svg>
+          </div>
+
+          <div class="cartao__corpo cartao__mensagem" id="mensagem" hidden>
+            <p class="cartao__titulo" id="msg-titulo"></p>
+            <p class="cartao__texto" id="msg-texto"></p>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ========== IMPORTAÇÃO ========== -->
+    <section class="secao" id="importacao" aria-labelledby="titulo-importacao">
+      <div class="grade">
+
+        <div class="coluna">
+          <p class="rotulo">Importação</p>
+          <h2 class="titulo" id="titulo-importacao">Importar clientes</h2>
+          <p class="lead">Envie o CSV. Cada coluna passa por uma regra de limpeza antes de entrar na base.</p>
+
+          <div class="dropzone" id="dropzone">
+            <p class="dropzone__titulo">Solte o arquivo CSV aqui</p>
+            <button class="btn btn--contorno" type="button" id="btn-arquivo">Escolher arquivo</button>
+            <input type="file" id="arquivo" accept=".csv,text/csv" hidden>
+          </div>
+          <p class="aviso" id="aviso-importacao" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="coluna tabela-rolagem" id="regras">
+          <table class="regras">
+            <caption class="sr-only">Regras de limpeza por campo</caption>
+            <colgroup>
+              <col class="col-campo"><col class="col-regra"><col class="col-exemplo">
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Campo</th>
+                <th scope="col">Regra</th>
+                <th scope="col">Antes → Depois</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">CNPJ</th>
+                <td>14 dígitos; rejeita sequências repetidas</td>
+                <td class="exemplo">11.222.333/0001-81 → 11222333000181</td>
+              </tr>
+              <tr>
+                <th scope="row">Telefone</th>
+                <td>10 ou 11 dígitos; tira o 55 e padroniza</td>
+                <td class="exemplo">(61) 99999-9999 → +5561999999999</td>
+              </tr>
+              <tr>
+                <th scope="row">CEP</th>
+                <td>8 dígitos</td>
+                <td class="exemplo">71929000 → 71929-000</td>
+              </tr>
+              <tr>
+                <th scope="row">Data</th>
+                <td>AAAA-MM-DD, DD/MM/AAAA ou DD-MM-AAAA</td>
+                <td class="exemplo">31/12/2025 → 2025-12-31</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== RESULTADO DA IMPORTAÇÃO ========== -->
+    <section class="secao" id="resultado" aria-labelledby="resultado-titulo" hidden>
+      <div class="resultado__topo">
+        <div>
+          <p class="rotulo">Resultado</p>
+          <h2 class="titulo titulo--menor" id="resultado-titulo">arquivo.csv</h2>
+        </div>
+        <div class="resultado__acoes">
+          <button class="btn" type="button" id="baixar-limpo">Baixar limpo <span aria-hidden="true">↓</span></button>
+          <button class="btn btn--contorno" type="button" id="baixar-rejeitados">Baixar rejeitados</button>
+        </div>
+      </div>
+
+      <dl class="resumo">
+        <div><dt>Linhas lidas</dt><dd id="res-total">0</dd></div>
+        <div><dt>Aceitas</dt><dd id="res-aceitas">0</dd></div>
+        <div class="resumo__rejeitadas"><dt>Rejeitadas</dt><dd id="res-rejeitadas">0</dd></div>
+      </dl>
+      <p class="aviso" id="res-colunas"></p>
+
+      <div class="previa" tabindex="0" role="region" aria-label="Prévia do resultado da limpeza">
+        <table id="tabela-resultado"></table>
+      </div>
+      <p class="aviso" id="res-nota"></p>
+    </section>
+
+  </main>
+
+</body>
+</html>
