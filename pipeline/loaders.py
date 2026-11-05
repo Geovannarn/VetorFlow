@@ -58,13 +58,3 @@ def carregar_no_banco(dados):
 
     conexao.commit()
     conexao.close()
-
-
-if __name__ == "__main__":
-    dados = carregar_csv(
-        "../data/raw/clientes_distribuidora_vetor.csv"
-    )
-
-    carregar_no_banco(dados)
-
-    print("Dados carregados no PostgreSQL com sucesso!")

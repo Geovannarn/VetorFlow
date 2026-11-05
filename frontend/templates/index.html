@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -9,8 +10,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../static/css/style.css">
-  <script src="../static/css/js/script.js" defer></script>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/clientes.css' %}?v=3">
+  <script src="{% static 'css/js/script.js' %}?v=3" defer></script>
+  <script src="{% static 'css/js/clientes.js' %}?v=3" defer></script>
 </head>
 <body>
 
@@ -29,6 +32,7 @@
     <nav class="menu" aria-label="Principal">
       <a href="#inicio" data-alvo="inicio" aria-current="true">Início</a>
       <a href="#consulta" data-alvo="consulta">Consulta</a>
+      <a href="#clientes" data-alvo="clientes">Clientes</a>
       <a href="#importacao" data-alvo="importacao">Importação</a>
       <a href="#regras" data-alvo="regras">Regras</a>
     </nav>
@@ -42,7 +46,7 @@
 
         <div class="coluna">
           <p class="rotulo">Início</p>
-          <h1 class="titulo titulo--grande" id="titulo-inicio">Endereços e clientes, sem sujeira.</h1>
+          <h1 class="titulo titulo--grande" id="titulo-inicio">Endereços e clientes.</h1>
           <p class="lead lead--larga">Consulte qualquer CEP em segundos e limpe a sua base de clientes antes de importar.</p>
 
           <div class="inicio__acoes">
@@ -139,6 +143,59 @@
         </article>
 
       </div>
+    </section>
+
+    <!-- ========== CLIENTES (CRUD) ========== -->
+    <section class="secao secao--clientes" id="clientes" aria-labelledby="titulo-clientes">
+
+      <div class="cli-topo">
+        <div>
+          <p class="rotulo">Clientes</p>
+          <h2 class="titulo titulo--menor" id="titulo-clientes">Gerenciar clientes</h2>
+          <p class="lead">Cadastre, edite e exclua os clientes da base.</p>
+        </div>
+        <button class="btn" type="button" id="cli-novo">Novo cliente <span aria-hidden="true">+</span></button>
+      </div>
+
+      <div class="cli-barra">
+        <label class="sr-only" for="cli-busca">Buscar cliente</label>
+        <input class="campo__entrada" id="cli-busca" type="search" autocomplete="off"
+               placeholder="Buscar por nome, CNPJ, e-mail…">
+        <p class="aviso" id="cli-contagem" role="status" aria-live="polite"></p>
+      </div>
+
+      <p class="aviso" id="cli-status" role="status" aria-live="polite"></p>
+
+      <div class="cli-tabela-wrap" tabindex="0" role="region" aria-label="Lista de clientes">
+        <table class="cli-tabela" id="cli-tabela"></table>
+      </div>
+
+      <!-- Janela: novo / editar -->
+      <dialog class="cli-dialogo" id="cli-dialogo" aria-labelledby="cli-dialogo-titulo">
+        <form class="cli-dialogo__form" id="cli-form" novalidate>
+          <h3 class="cli-dialogo__titulo" id="cli-dialogo-titulo">Novo cliente</h3>
+          <div class="cli-campos" id="cli-campos"></div>
+          <p class="campo__erro" id="cli-erro-form" role="alert" hidden></p>
+          <div class="cli-dialogo__acoes">
+            <button class="btn btn--contorno" type="button" id="cli-cancelar">Cancelar</button>
+            <button class="btn" type="submit" id="cli-salvar">Salvar</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Janela: confirmar exclusão -->
+      <dialog class="cli-dialogo cli-dialogo--estreito" id="cli-confirmar" aria-labelledby="cli-confirmar-titulo">
+        <div class="cli-dialogo__form">
+          <h3 class="cli-dialogo__titulo" id="cli-confirmar-titulo">Excluir cliente</h3>
+          <p class="cli-dialogo__texto" id="cli-confirmar-texto"></p>
+          <p class="campo__erro" id="cli-erro-excluir" role="alert" hidden></p>
+          <div class="cli-dialogo__acoes">
+            <button class="btn btn--contorno" type="button" id="cli-cancelar-excluir">Cancelar</button>
+            <button class="btn cli-perigo" type="button" id="cli-excluir">Excluir</button>
+          </div>
+        </div>
+      </dialog>
+
     </section>
 
     <!-- ========== IMPORTAÇÃO ========== -->

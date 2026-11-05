@@ -1,0 +1,216 @@
+/* ============================================================
+   primora. · Gerenciamento de clientes
+   Reaproveita as classes do style.css (.btn, .btn--contorno, .rotulo,
+   .titulo, .lead, .aviso, .campo__*). Carregue DEPOIS do style.css.
+   Se as janelas (dialog) ficarem com cor diferente do resto do site,
+   ajuste --cli-fundo e --cli-texto abaixo.
+   ============================================================ */
+
+.secao--clientes {
+  --cli-linha: color-mix(in srgb, currentColor 16%, transparent);
+  --cli-fundo: #fff;
+  --cli-texto: #111;
+  --cli-perigo: #b3261e;
+}
+
+/* ---------- topo e barra de busca ---------- */
+
+.cli-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.cli-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.cli-barra .campo__entrada {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+}
+
+.cli-barra .aviso {
+  margin: 0;
+}
+
+.secao--clientes > .aviso {
+  min-height: 1.5em;
+  margin: 0 0 .75rem;
+}
+
+/* ---------- tabela ---------- */
+
+.cli-tabela-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--cli-linha);
+}
+
+.cli-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9375rem;
+}
+
+.cli-tabela th,
+.cli-tabela td {
+  padding: .75rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--cli-linha);
+}
+
+.cli-tabela tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.cli-tabela thead th {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: .65;
+}
+
+.cli-tabela tbody th {
+  font-weight: 600;
+}
+
+.cli-tabela tbody tr:hover {
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.cli-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: .875rem;
+}
+
+.cli-nulo {
+  opacity: .4;
+}
+
+.cli-col-acoes {
+  width: 1%;
+}
+
+.cli-acoes {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.cli-vazio {
+  padding: 2rem 1rem !important;
+  text-align: center !important;
+  white-space: normal !important;
+  opacity: .75;
+}
+
+.cli-vazio .cli-acao {
+  margin-left: .75rem;
+}
+
+/* ---------- botões pequenos da tabela ---------- */
+
+.cli-acao {
+  font: inherit;
+  font-size: .8125rem;
+  line-height: 1;
+  padding: .45rem .75rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--cli-linha);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cli-acao:hover {
+  border-color: currentColor;
+}
+
+.cli-acao:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ---------- janelas (formulário e confirmação) ---------- */
+
+.cli-dialogo {
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  overflow: auto;
+  color: var(--cli-texto, #111);
+  background: var(--cli-fundo, #fff);
+  border: 1px solid var(--cli-linha, #ccc);
+  border-radius: 8px;
+}
+
+.cli-dialogo--estreito {
+  width: min(26rem, calc(100vw - 2rem));
+}
+
+.cli-dialogo::backdrop {
+  background: rgb(0 0 0 / .45);
+}
+
+.cli-dialogo__form {
+  padding: 1.5rem;
+}
+
+.cli-dialogo__titulo {
+  margin: 0 0 1.25rem;
+  font-size: 1.25rem;
+}
+
+.cli-dialogo__texto {
+  margin: 0 0 1.25rem;
+}
+
+.cli-dialogo__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .75rem;
+  margin-top: 1.5rem;
+}
+
+.cli-campos {
+  display: grid;
+  gap: 1rem;
+}
+
+.cli-campo,
+.cli-campo__controle {
+  display: grid;
+  gap: .375rem;
+}
+
+.cli-campo .campo__erro,
+.cli-dialogo__form > .campo__erro {
+  margin: 0;
+}
+
+.cli-opcional {
+  font-weight: 400;
+  opacity: .6;
+}
+
+.btn.cli-perigo {
+  color: #fff;
+  background: var(--cli-perigo, #b3261e);
+  border-color: var(--cli-perigo, #b3261e);
+}
+
+.btn:disabled {
+  opacity: .6;
+  cursor: progress;
+}

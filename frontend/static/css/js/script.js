@@ -1,15 +1,8 @@
 'use strict';
 
-/* ============================================================
-   primora. · Consulta de CEP e importação de clientes
-   Roda inteiro no navegador: sem build, sem dependências.
-   ============================================================ */
-
 const $ = (seletor, raiz = document) => raiz.querySelector(seletor);
 
-/* ------------------------------------------------------------
-   Utilidades
-   ------------------------------------------------------------ */
+
 
 function soDigitos(valor) {
   return String(valor == null ? '' : valor).replace(/\D/g, '');
@@ -44,11 +37,6 @@ function criar(tag, atributos = {}, ...filhos) {
   return no;
 }
 
-/* ------------------------------------------------------------
-   Regras de limpeza (a tabela "Regras" da página descreve estas)
-   Cada regra devolve { valor } ou { erro }.
-   ------------------------------------------------------------ */
-
 function limparCnpj(texto) {
   const d = soDigitos(texto);
   if (d.length !== 14) return { erro: 'CNPJ precisa ter 14 dígitos' };
@@ -58,7 +46,6 @@ function limparCnpj(texto) {
 
 function limparTelefone(texto) {
   let d = soDigitos(texto);
-  // Só tira o 55 quando sobra um número válido (evita confundir com o DDD 55).
   if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
   if (d.length !== 10 && d.length !== 11) return { erro: 'Telefone precisa ter 10 ou 11 dígitos' };
   return { valor: '+55' + d };
@@ -101,7 +88,6 @@ const REGRAS = {
   data:     { rotulo: 'Data',     limpar: limparData },
 };
 
-/** Descobre qual regra se aplica a uma coluna pelo nome do cabeçalho. */
 function detectarTipo(nomeColuna) {
   const n = normalizar(nomeColuna);
   if (!n) return null;
@@ -112,16 +98,12 @@ function detectarTipo(nomeColuna) {
   return null;
 }
 
-/** Células vazias passam direto: ausência de dado não é erro. */
 function limparValor(tipo, bruto) {
   const texto = String(bruto == null ? '' : bruto).trim();
   if (!texto) return { valor: '' };
   return REGRAS[tipo].limpar(texto);
 }
 
-/* ------------------------------------------------------------
-   CSV
-   ------------------------------------------------------------ */
 
 function detectarDelimitador(texto) {
   const cont = { ',': 0, ';': 0, '\t': 0 };
@@ -245,7 +227,6 @@ function gerarCsvRejeitados(res) {
 }
 
 function baixar(nomeArquivo, conteudo) {
-  // BOM para o Excel abrir os acentos corretamente.
   const blob = new Blob(['\uFEFF' + conteudo], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = criar('a', { href: url, download: nomeArquivo });
@@ -255,9 +236,6 @@ function baixar(nomeArquivo, conteudo) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/* ------------------------------------------------------------
-   Consulta de CEP: ViaCEP (3 tentativas) → BrasilAPI → cache
-   ------------------------------------------------------------ */
 
 const CHAVE_CACHE = 'primora:cep:';
 const CHAVE_PREFERENCIA = 'primora:usar-cache';
@@ -291,7 +269,7 @@ function lerCache(cep) {
 function gravarCache(cep, endereco, fonte) {
   try {
     localStorage.setItem(CHAVE_CACHE + cep, JSON.stringify({ endereco, fonte, salvoEm: Date.now() }));
-  } catch (_) { /* armazenamento cheio ou bloqueado: segue sem cache */ }
+  } catch (_) { }
 }
 
 async function buscar(url) {
@@ -304,7 +282,6 @@ async function buscar(url) {
   }
 }
 
-/** Devolve o endereço, ou null se o CEP não existir. Lança erro se o serviço falhar. */
 async function consultarViaCep(cep) {
   const resposta = await buscar('https://viacep.com.br/ws/' + cep + '/json/');
   if (!resposta.ok) throw new Error('ViaCEP HTTP ' + resposta.status);
@@ -345,7 +322,6 @@ async function resolverCep(cep, { usarCache, aoTentar }) {
 
   let inexistente = false;
 
-  // 1) ViaCEP, até 3 tentativas (só repete quando o serviço falha).
   for (let tentativa = 1; tentativa <= TENTATIVAS_VIACEP; tentativa++) {
     if (aoTentar) aoTentar('viacep', tentativa);
     try {
@@ -361,7 +337,6 @@ async function resolverCep(cep, { usarCache, aoTentar }) {
     }
   }
 
-  // 2) BrasilAPI como alternativa.
   if (aoTentar) aoTentar('brasilapi', 1);
   try {
     const endereco = await consultarBrasilApi(cep);
@@ -375,7 +350,6 @@ async function resolverCep(cep, { usarCache, aoTentar }) {
   throw new ErroCep(inexistente ? 'nao-encontrado' : 'indisponivel');
 }
 
-/* ---------- Código de barras decorativo (determinístico por CEP) ---------- */
 
 function criarGerador(semente) {
   let a = semente >>> 0;
@@ -412,7 +386,6 @@ function desenharBarras(svg, cep) {
   svg.innerHTML = '<g fill="currentColor" shape-rendering="crispEdges">' + retangulos.join('') + '</g>';
 }
 
-/* ---------- Interface da consulta ---------- */
 
 function iniciarCep() {
   const form = $('#form-cep');
@@ -426,7 +399,6 @@ function iniciarCep() {
   const fonte = $('#fonte');
   let consultaAtual = 0;
 
-  // preferência de cache
   try {
     const guardada = localStorage.getItem(CHAVE_PREFERENCIA);
     if (guardada !== null) chkCache.checked = guardada === '1';
@@ -533,12 +505,9 @@ function iniciarCep() {
     consultar();
   });
 
-  consultar(); // mostra o CEP que já está no campo ao abrir a página
+  consultar();
 }
 
-/* ------------------------------------------------------------
-   Interface da importação
-   ------------------------------------------------------------ */
 
 const TAMANHO_MAXIMO = 5 * 1024 * 1024;
 const LINHAS_NA_PREVIA = 100;
@@ -680,13 +649,10 @@ function iniciarImportacao() {
   });
 }
 
-/* ------------------------------------------------------------
-   Menu: destaca a seção visível
-   ------------------------------------------------------------ */
 
 function iniciarMenu() {
   const links = Array.from(document.querySelectorAll('.menu a'));
-  const secoes = ['inicio', 'consulta', 'importacao']
+  const secoes = ['inicio', 'consulta', 'clientes', 'importacao']
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   let agendado = false;
@@ -721,9 +687,6 @@ function iniciarMenu() {
   atualizar();
 }
 
-/* ------------------------------------------------------------
-   Abertura: "primora." surgindo, depois sobe e revela a página
-   ------------------------------------------------------------ */
 
 function iniciarSplash() {
   const splash = $('#splash');
@@ -766,9 +729,8 @@ function iniciarSplash() {
   });
 }
 
-/* ------------------------------------------------------------
-   Início
-   ------------------------------------------------------------ */
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
   iniciarSplash();
