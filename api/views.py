@@ -1,8 +1,14 @@
+import logging
+
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
+from audit.logger import registrar_operacao
 from database.connection import conectar
+
+
+logger = logging.getLogger(__name__)
 
 
 CAMPOS = [
@@ -28,10 +34,13 @@ def valor(dados, campo):
     return None if x in ("", None) else x
 
 
+def codigo_erro(erro):
+    return getattr(erro, "sqlstate", None) or getattr(erro, "pgcode", None)
+
+
 def descrever_erro_banco(erro):
-    """Traduz o erro do PostgreSQL para uma mensagem legível."""
     diag = getattr(erro, "diag", None)
-    codigo = getattr(erro, "pgcode", None) or getattr(erro, "sqlstate", None)
+    codigo = codigo_erro(erro)
 
     principal = getattr(diag, "message_primary", None) or str(erro).strip()
     coluna = getattr(diag, "column_name", None)
@@ -53,6 +62,30 @@ def descrever_erro_banco(erro):
         return f"Dado inválido. ({principal})"
 
     return principal
+
+
+def responder(request, corpo, status_http, id_cliente=None):
+    if status_http < 400:
+        resultado = "sucesso"
+    else:
+        resultado = corpo.get("erro", "erro")
+
+    registrar_operacao(request.method, request.path, id_cliente, resultado)
+
+    return Response(corpo, status=status_http)
+
+
+def cliente_existe(cursor, id_cliente):
+    cursor.execute(
+        """
+        SELECT 1
+        FROM usuarios
+        WHERE id_cliente = %s
+        """,
+        (id_cliente,)
+    )
+
+    return cursor.fetchone() is not None
 
 
 @api_view(["GET", "POST", "PUT", "DELETE"])
@@ -78,17 +111,21 @@ def clientes(request, id_cliente=None):
                     registro = cursor.fetchone()
 
                     if registro is None:
-                        return Response(
+                        return responder(
+                            request,
                             {"erro": "Cliente não encontrado."},
-                            status=status.HTTP_404_NOT_FOUND
+                            status.HTTP_404_NOT_FOUND,
+                            id_cliente
                         )
 
-                    colunas = [
-                        coluna.name
-                        for coluna in cursor.description
-                    ]
+                    colunas = [coluna.name for coluna in cursor.description]
 
-                    return Response(dict(zip(colunas, registro)))
+                    return responder(
+                        request,
+                        dict(zip(colunas, registro)),
+                        status.HTTP_200_OK,
+                        id_cliente
+                    )
 
                 cursor.execute(
                     """
@@ -98,52 +135,42 @@ def clientes(request, id_cliente=None):
                     """
                 )
 
-                colunas = [
-                    coluna.name
-                    for coluna in cursor.description
-                ]
-
-                registros = cursor.fetchall()
+                colunas = [coluna.name for coluna in cursor.description]
 
                 resultado = [
                     dict(zip(colunas, registro))
-                    for registro in registros
+                    for registro in cursor.fetchall()
                 ]
 
-                return Response(resultado)
+                return responder(request, resultado, status.HTTP_200_OK)
 
             elif request.method == "POST":
 
                 dados = request.data
-                novo_id = dados.get("id_cliente")
+                novo_id = valor(dados, "id_cliente")
+                razao_social = valor(dados, "razao_social")
 
-                if novo_id is None or str(novo_id).strip() == "":
-                    return Response(
+                if novo_id is None:
+                    return responder(
+                        request,
                         {"erro": "Informe o código do cliente."},
-                        status=status.HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST
                     )
 
-                if not dados.get("razao_social"):
-                    return Response(
+                if razao_social is None:
+                    return responder(
+                        request,
                         {"erro": "Informe a razão social do cliente."},
-                        status=status.HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST,
+                        novo_id
                     )
 
-                cursor.execute(
-                    """
-                    SELECT 1
-                    FROM usuarios
-                    WHERE id_cliente = %s
-                    """,
-                    (novo_id,)
-                )
-
-                if cursor.fetchone():
-                    return Response(
-                        {
-                            "erro": "Já existe um cliente cadastrado com esse código."
-                        },
-                        status=status.HTTP_409_CONFLICT
+                if cliente_existe(cursor, novo_id):
+                    return responder(
+                        request,
+                        {"erro": "Já existe um cliente cadastrado com esse código."},
+                        status.HTTP_409_CONFLICT,
+                        novo_id
                     )
 
                 cursor.execute(
@@ -169,7 +196,7 @@ def clientes(request, id_cliente=None):
                     """,
                     (
                         novo_id,
-                        dados.get("razao_social"),
+                        razao_social,
                         valor(dados, "cnpj"),
                         valor(dados, "telefone"),
                         valor(dados, "email"),
@@ -185,58 +212,58 @@ def clientes(request, id_cliente=None):
                 novo_id = cursor.fetchone()[0]
                 conexao.commit()
 
-                return Response(
+                return responder(
+                    request,
                     {
                         "mensagem": "Cliente criado com sucesso.",
                         "id_cliente": novo_id
                     },
-                    status=status.HTTP_201_CREATED
+                    status.HTTP_201_CREATED,
+                    novo_id
                 )
 
             elif request.method == "PUT":
 
                 if id_cliente is None or str(id_cliente).strip() == "":
-                    return Response(
+                    return responder(
+                        request,
                         {"erro": "Informe o código do cliente."},
-                        status=status.HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST
                     )
 
                 dados = request.data
 
                 campos_atualizar = {
-                    campo: dados[campo]
+                    campo: valor(dados, campo)
                     for campo in CAMPOS
                     if campo in dados
                 }
 
                 if not campos_atualizar:
-                    return Response(
+                    return responder(
+                        request,
                         {"erro": "Nenhum campo válido foi enviado."},
-                        status=status.HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST,
+                        id_cliente
                     )
 
                 if (
                     "razao_social" in campos_atualizar
-                    and not campos_atualizar["razao_social"]
+                    and campos_atualizar["razao_social"] is None
                 ):
-                    return Response(
+                    return responder(
+                        request,
                         {"erro": "Informe a razão social do cliente."},
-                        status=status.HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST,
+                        id_cliente
                     )
 
-                cursor.execute(
-                    """
-                    SELECT 1
-                    FROM usuarios
-                    WHERE id_cliente = %s
-                    """,
-                    (id_cliente,)
-                )
-
-                if cursor.fetchone() is None:
-                    return Response(
+                if not cliente_existe(cursor, id_cliente):
+                    return responder(
+                        request,
                         {"erro": "Cliente não encontrado."},
-                        status=status.HTTP_404_NOT_FOUND
+                        status.HTTP_404_NOT_FOUND,
+                        id_cliente
                     )
 
                 campos_sql = ", ".join(
@@ -258,66 +285,75 @@ def clientes(request, id_cliente=None):
 
                 conexao.commit()
 
-                return Response(
+                return responder(
+                    request,
                     {"mensagem": "Cliente atualizado com sucesso."},
-                    status=status.HTTP_200_OK
+                    status.HTTP_200_OK,
+                    id_cliente
                 )
 
             elif request.method == "DELETE":
 
                 if id_cliente is None or str(id_cliente).strip() == "":
-                    return Response(
+                    return responder(
+                        request,
                         {"erro": "Informe o código do cliente."},
-                        status=status.HTTP_400_BAD_REQUEST
+                        status.HTTP_400_BAD_REQUEST
                     )
 
-                coluna = "id" if request.query_params.get("por") == "id" else "id_cliente"
-
                 cursor.execute(
-                    f"""
+                    """
                     DELETE FROM usuarios
-                    WHERE {coluna} = %s
+                    WHERE id_cliente = %s
                     """,
                     (id_cliente,)
                 )
 
                 if cursor.rowcount == 0:
-                    return Response(
+                    return responder(
+                        request,
                         {"erro": "Cliente não encontrado."},
-                        status=status.HTTP_404_NOT_FOUND
+                        status.HTTP_404_NOT_FOUND,
+                        id_cliente
                     )
 
                 conexao.commit()
 
-                return Response(
+                return responder(
+                    request,
                     {"mensagem": "Cliente excluído com sucesso."},
-                    status=status.HTTP_200_OK
+                    status.HTTP_200_OK,
+                    id_cliente
                 )
 
     except Exception as erro:
         conexao.rollback()
 
-        codigo = getattr(erro, "pgcode", None) or getattr(erro, "sqlstate", None)
+        codigo = codigo_erro(erro)
 
         if codigo == "23505":
             restricao = getattr(getattr(erro, "diag", None), "constraint_name", "") or ""
 
             if "id_cliente" in restricao:
-                return Response(
+                return responder(
+                    request,
                     {"erro": "Já existe um cliente cadastrado com esse código."},
-                    status=status.HTTP_409_CONFLICT
+                    status.HTTP_409_CONFLICT,
+                    id_cliente
                 )
 
         if codigo:
-            print("ERRO DO BANCO:", codigo, erro)
+            logger.error("Erro do banco: %s %s", codigo, erro)
 
-            return Response(
+            return responder(
+                request,
                 {"erro": descrever_erro_banco(erro), "codigo": codigo},
-                status=(
+                (
                     status.HTTP_400_BAD_REQUEST
                     if codigo[:2] in ("22", "23")
                     else status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+                ),
+                id_cliente
             )
 
         raise

@@ -363,7 +363,7 @@
 
       renderizar();
 
-      definirAviso('Clientes carregados com sucesso. (clientes.js ' + VERSAO + ')');
+      definirAviso('Clientes carregados com sucesso.');
 
     } catch (erro) {
       console.error('Falha ao carregar clientes:', erro);

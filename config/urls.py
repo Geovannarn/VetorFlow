@@ -1,15 +1,10 @@
-
 from django.contrib import admin
 from django.urls import include, path
-from django.shortcuts import render
-
-
-def inicio(request):
-    return render(request, 'index.html')
+from django.views.generic import TemplateView
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('api.routes')),
-    path('', inicio, name='inicio'),
+    path("admin/", admin.site.urls),
+    path("api/", include("api.routes")),
+    path("", TemplateView.as_view(template_name="index.html"), name="inicio"),
 ]

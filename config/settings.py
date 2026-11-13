@@ -1,20 +1,39 @@
-
 """
 Django settings for config project.
 """
 
+import os
 from pathlib import Path
 
-# Diretório principal do projeto
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
+
+
+def env_bool(nome, padrao=False):
+    valor = os.getenv(nome)
+
+    if valor is None:
+        return padrao
+
+    return valor.strip().lower() in ("1", "true", "yes", "sim")
 
 
 # Segurança
-SECRET_KEY = 'django-insecure-vetorflow-chave-local-2026-nao-usar-em-producao'
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-vetorflow-chave-local-2026-nao-usar-em-producao",
+)
 
-DEBUG = True
+DEBUG = env_bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if host.strip()
+]
 
 
 # Aplicações instaladas
@@ -66,15 +85,20 @@ TEMPLATES = [
 ]
 
 
-# Servidor WSGI
+# Servidor WSGI / ASGI
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
-# Banco de dados
+# Banco de dados (mesmas variáveis do .env usadas em database/connection.py)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv("DB_NAME", "VetorFlow"),
+        'USER': os.getenv("DB_USER", "postgres"),
+        'PASSWORD': os.getenv("DB_PASSWORD", ""),
+        'HOST': os.getenv("DB_HOST", "localhost"),
+        'PORT': os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -112,6 +136,16 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'frontend' / 'static',
 ]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
+# Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
 
 
 # Chave primária padrão
