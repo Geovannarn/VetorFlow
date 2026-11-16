@@ -64,13 +64,20 @@ def descrever_erro_banco(erro):
     return principal
 
 
-def responder(request, corpo, status_http, id_cliente=None):
+def responder(request, corpo, status_http, id_cliente=None, detalhes=None):
     if status_http < 400:
         resultado = "sucesso"
     else:
         resultado = corpo.get("erro", "erro")
 
-    registrar_operacao(request.method, request.path, id_cliente, resultado)
+    registrar_operacao(
+        request.method,
+        request.path,
+        id_cliente,
+        resultado,
+        ip=request.META.get("REMOTE_ADDR", "-"),
+        detalhes=detalhes,
+    )
 
     return Response(corpo, status=status_http)
 
@@ -219,7 +226,8 @@ def clientes(request, id_cliente=None):
                         "id_cliente": novo_id
                     },
                     status.HTTP_201_CREATED,
-                    novo_id
+                    novo_id,
+                    {campo: valor(dados, campo) for campo in CAMPOS}
                 )
 
             elif request.method == "PUT":
@@ -289,7 +297,8 @@ def clientes(request, id_cliente=None):
                     request,
                     {"mensagem": "Cliente atualizado com sucesso."},
                     status.HTTP_200_OK,
-                    id_cliente
+                    id_cliente,
+                    campos_atualizar
                 )
 
             elif request.method == "DELETE":

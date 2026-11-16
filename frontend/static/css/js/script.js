@@ -3,7 +3,6 @@
 const $ = (seletor, raiz = document) => raiz.querySelector(seletor);
 
 
-
 function soDigitos(valor) {
   return String(valor == null ? '' : valor).replace(/\D/g, '');
 }
@@ -62,8 +61,21 @@ function dataValida(ano, mes, dia) {
   return d.getUTCFullYear() === ano && d.getUTCMonth() === mes - 1 && d.getUTCDate() === dia;
 }
 
+const MESES_EN = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
+
+// Aceita "Dec", "Dec." ou "December" (mínimo de 3 letras).
+function numeroDoMes(nome) {
+  const n = nome.toLowerCase();
+  if (n.length < 3) return 0;
+  return MESES_EN.findIndex((mes) => mes.startsWith(n)) + 1;
+}
+
 function limparData(texto) {
   const s = String(texto).trim();
+  const formatos = 'Use AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA ou Mês DD, AAAA';
   let m;
   let ano, mes, dia;
 
@@ -71,8 +83,12 @@ function limparData(texto) {
     [ano, mes, dia] = [+m[1], +m[2], +m[3]];
   } else if ((m = /^(\d{2})([/-])(\d{2})\2(\d{4})$/.exec(s))) {
     [dia, mes, ano] = [+m[1], +m[3], +m[4]];
+  } else if ((m = /^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/.exec(s))) {
+    mes = numeroDoMes(m[1]);
+    if (!mes) return { erro: formatos };
+    [dia, ano] = [+m[2], +m[3]];
   } else {
-    return { erro: 'Use AAAA-MM-DD, DD/MM/AAAA ou DD-MM-AAAA' };
+    return { erro: formatos };
   }
 
   if (!dataValida(ano, mes, dia)) return { erro: 'Data inexistente' };
@@ -196,6 +212,12 @@ function processarCsv(texto) {
     });
     const erros = [];
     campos.forEach((c, j) => { if (c.erro) erros.push(cabecalho[j] + ': ' + c.erro); });
+
+    // Células além do cabeçalho seriam descartadas em silêncio.
+    if (celulas.slice(cabecalho.length).some((c) => c.trim() !== '')) {
+      erros.push('Linha tem mais colunas que o cabeçalho');
+    }
+
     return { linha: i + 2, campos, erros };
   });
 
@@ -269,7 +291,7 @@ function lerCache(cep) {
 function gravarCache(cep, endereco, fonte) {
   try {
     localStorage.setItem(CHAVE_CACHE + cep, JSON.stringify({ endereco, fonte, salvoEm: Date.now() }));
-  } catch (_) { }
+  } catch (_) { /* cache é opcional */ }
 }
 
 async function buscar(url) {
@@ -505,7 +527,7 @@ function iniciarCep() {
     consultar();
   });
 
-  consultar();
+  if (soDigitos(entrada.value).length === 8) consultar();
 }
 
 
@@ -570,7 +592,7 @@ function iniciarImportacao() {
       const tr = criar('tr', { class: rejeitada ? 'is-rejeitada' : '' });
       tr.append(
         criar('td', { class: 'cel--linha', text: String(registro.linha) }),
-        criar('td', {}, criar('span', { class: 'selo' + (rejeitada ? ' selo--erro' : ''), text: rejeitada ? 'Rejeitada' : 'Aceita' }))
+        criar('td', {}, criar('span', { class: 'selo' + (rejeitada ? ' selo--erro' : ''), text: rejeitada ? 'Com erro' : 'Aceita' }))
       );
       registro.campos.forEach((campo) => tr.append(celula(campo)));
       corpo.append(tr);
@@ -618,7 +640,7 @@ function iniciarImportacao() {
   campoArquivo.addEventListener('change', () => {
     const arquivo = campoArquivo.files[0];
     if (arquivo) importar(arquivo);
-    campoArquivo.value = ''; // permite escolher o mesmo arquivo de novo
+    campoArquivo.value = '';
   });
 
   zona.addEventListener('dragover', (evento) => {
@@ -634,7 +656,6 @@ function iniciarImportacao() {
     const arquivo = evento.dataTransfer && evento.dataTransfer.files[0];
     if (arquivo) importar(arquivo);
   });
-  // Evita que soltar um arquivo fora da zona faça o navegador abri-lo.
   window.addEventListener('dragover', (evento) => evento.preventDefault());
   window.addEventListener('drop', (evento) => evento.preventDefault());
 
@@ -645,7 +666,7 @@ function iniciarImportacao() {
     if (atual) baixar(nomeBase() + '-limpo.csv', gerarCsvLimpo(atual.res));
   });
   btnRejeitados.addEventListener('click', () => {
-    if (atual) baixar(nomeBase() + '-rejeitados.csv', gerarCsvRejeitados(atual.res));
+    if (atual) baixar(nomeBase() + '-com-erro.csv', gerarCsvRejeitados(atual.res));
   });
 }
 
@@ -671,6 +692,10 @@ function iniciarMenu() {
     for (const secao of secoes) {
       if (secao.getBoundingClientRect().top <= linhaDeLeitura) alvo = secao.id;
     }
+
+    const noFim = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    if (noFim && secoes.length) alvo = secoes[secoes.length - 1].id;
+
     if (alvo === 'importacao' && location.hash === '#regras') alvo = 'regras';
     marcar(alvo);
   }
@@ -698,7 +723,7 @@ function iniciarSplash() {
     return;
   }
 
-  const TEMPO_TOTAL_MS = 3600; // animação de entrada + saída, com folga
+  const TEMPO_TOTAL_MS = 3600;
   let encerrada = false;
 
   document.body.classList.add('splash-aberta');
@@ -707,6 +732,7 @@ function iniciarSplash() {
     if (encerrada) return;
     encerrada = true;
     document.body.classList.remove('splash-aberta');
+    document.removeEventListener('keydown', aoPressionarTecla);
     splash.remove();
   }
 
@@ -715,21 +741,26 @@ function iniciarSplash() {
     splash.classList.add('splash--saindo');
   }
 
-  splash.addEventListener('animationend', (evento) => {
-    if (evento.animationName === 'splash-saida') encerrar();
-  });
-  setTimeout(encerrar, TEMPO_TOTAL_MS); // garantia, caso o evento não dispare
+  function aoPressionarTecla(evento) {
+    if (encerrada) return;
 
-  splash.addEventListener('click', sair);
-  document.addEventListener('keydown', (evento) => {
-    if (!encerrada && (evento.key === 'Escape' || evento.key === 'Enter' || evento.key === ' ')) {
+    const alvo = evento.target;
+    const interativo = alvo && alvo.closest && alvo.closest('input, textarea, select, button, a');
+
+    if (evento.key === 'Escape' || (!interativo && (evento.key === 'Enter' || evento.key === ' '))) {
       evento.preventDefault();
       sair();
     }
+  }
+
+  splash.addEventListener('animationend', (evento) => {
+    if (evento.animationName === 'splash-saida') encerrar();
   });
+  setTimeout(encerrar, TEMPO_TOTAL_MS);
+
+  splash.addEventListener('click', sair);
+  document.addEventListener('keydown', aoPressionarTecla);
 }
-
-
 
 
 document.addEventListener('DOMContentLoaded', () => {

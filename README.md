@@ -277,7 +277,7 @@ VetorFlow/
 | `requirements.txt` | Dependências do projeto |
 | `.env` | Variáveis de ambiente locais |
 | `.env.example` | Modelo de configuração das variáveis de ambiente |
-| `Relatório_tradeoffs.md` | Documentação das decisões e dos trade-offs do projeto |
+| `docs/Relatório_tradeoffs.md` | Documentação das decisões e dos trade-offs do projeto |
 
 ## Configuração
 
@@ -368,7 +368,7 @@ Essa organização permitiu acompanhar o andamento das atividades, visualizar as
 
 A documentação complementar está organizada no diretório `docs/`.
 
-O projeto também possui o arquivo `Relatório_tradeoffs.md`, que apresenta as principais decisões tomadas durante o desenvolvimento, os critérios utilizados e os pontos considerados na implementação das soluções.
+O projeto também possui o arquivo `docs/Relatório_tradeoffs.md`, que apresenta as principais decisões tomadas durante o desenvolvimento, os critérios utilizados e os pontos considerados na implementação das soluções.
 
 ---
 

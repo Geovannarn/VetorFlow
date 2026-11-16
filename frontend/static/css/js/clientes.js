@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const VERSAO = 'v6';
+  const VERSAO = 'v7';
   const API_URL = '/api/clientes/';
   const TEMPO_LIMITE_MS = 10000;
 
@@ -13,7 +13,7 @@
     { nome: 'bairro', rotulo: 'Bairro' },
     { nome: 'cep', rotulo: 'CEP' },
     { nome: 'cidade', rotulo: 'Cidade' },
-    { nome: 'uf', rotulo: 'UF' },
+    { nome: 'uf', rotulo: 'UF', tamanhoMaximo: 2 },
     { nome: 'cadastro', rotulo: 'Data de cadastro', tipo: 'date' },
     { nome: 'responsavel', rotulo: 'Responsável' }
   ];
@@ -34,8 +34,6 @@
       String(valor).trim() !== '';
   }
 
-  // Recupera o código do cliente. Aceita só variações de "id_cliente":
-  // adivinhar outra coluna poderia excluir o cliente errado.
   function obterIdCliente(cliente) {
     if (!cliente || typeof cliente !== 'object') return null;
 
@@ -44,23 +42,6 @@
     );
 
     if (chave && idValido(cliente[chave])) return cliente[chave];
-
-    console.warn('Cliente sem id_cliente. Chaves recebidas:', Object.keys(cliente), cliente);
-    return null;
-  }
-
-  // Define por qual coluna o cliente será excluído.
-  // Normal: id_cliente. Linhas importadas sem id_cliente usam a coluna "id".
-  function obterAlvo(cliente) {
-    const idCliente = obterIdCliente(cliente);
-
-    if (idValido(idCliente)) {
-      return { campo: 'id_cliente', valor: idCliente };
-    }
-
-    if (cliente && idValido(cliente.id)) {
-      return { campo: 'id', valor: cliente.id };
-    }
 
     return null;
   }
@@ -81,10 +62,8 @@
       : '';
   }
 
-  function urlDoCliente(valor, campo = 'id_cliente') {
-    const url = API_URL + encodeURIComponent(valor) + '/';
-
-    return campo === 'id' ? url + '?por=id' : url;
+  function urlDoCliente(idCliente) {
+    return API_URL + encodeURIComponent(idCliente) + '/';
   }
 
   async function requisitar(metodo, url, corpo = null) {
@@ -161,6 +140,10 @@
       return 'A requisição demorou demais. Tente novamente.';
     }
 
+    if (erro instanceof TypeError) {
+      return 'Não foi possível conectar ao servidor. Verifique se ele está rodando.';
+    }
+
     if (erro.status === 404) {
       return 'Cliente não encontrado. Atualize a lista e tente novamente.';
     }
@@ -224,6 +207,15 @@
       }
     }
 
+    if (campo === 'cadastro') {
+      const data = String(valor).slice(0, 10);
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+        const [ano, mes, dia] = data.split('-');
+        return `${dia}/${mes}/${ano}`;
+      }
+    }
+
     return String(valor);
   }
 
@@ -255,6 +247,9 @@
     const filtrados = clientes.filter(cliente => {
       const valores = [
         obterIdCliente(cliente),
+        ...CAMPOS.map(campo =>
+          formatarValor(campo.nome, cliente[campo.nome])
+        ),
         ...CAMPOS.map(campo => cliente[campo.nome])
       ];
 
@@ -271,6 +266,10 @@
     tabela.replaceChildren();
 
     const cabecalho = criarElemento('tr');
+
+    cabecalho.append(
+      criarElemento('th', { scope: 'col' }, 'Código')
+    );
 
     CAMPOS.forEach(campo => {
       cabecalho.append(
@@ -295,7 +294,7 @@
       const celula = criarElemento(
         'td',
         {
-          colspan: CAMPOS.length + 1,
+          colspan: CAMPOS.length + 2,
           class: 'cli-vazio'
         },
         'Nenhum cliente encontrado.'
@@ -307,6 +306,12 @@
     } else {
       filtrados.forEach(cliente => {
         const linha = criarElemento('tr');
+
+        const idCliente = obterIdCliente(cliente);
+
+        linha.append(
+          criarElemento('td', {}, idValido(idCliente) ? String(idCliente) : '—')
+        );
 
         CAMPOS.forEach(campo => {
           const valor = formatarValor(
@@ -335,7 +340,8 @@
           'button',
           {
             type: 'button',
-            class: 'cli-acao'
+            class: 'cli-acao',
+            'aria-label': `Excluir ${nomeDe(cliente)}`
           },
           'Excluir'
         );
@@ -359,15 +365,19 @@
 
       clientes = Array.isArray(resposta)
         ? resposta
-        : resposta.results || [];
+        : resposta?.results || [];
 
       renderizar();
 
       definirAviso('Clientes carregados com sucesso.');
 
+      return true;
+
     } catch (erro) {
       console.error('Falha ao carregar clientes:', erro);
       definirAviso(mensagemDeErro(erro), true);
+
+      return false;
     }
   }
 
@@ -376,7 +386,6 @@
 
     container.replaceChildren();
 
-    // O código é solicitado somente no cadastro.
     if (!cliente) {
       const grupoId = criarElemento('div', {
         class: 'cli-campo'
@@ -423,7 +432,8 @@
         class: 'campo__entrada',
         id,
         name: campo.nome,
-        type: campo.tipo || 'text'
+        type: campo.tipo || 'text',
+        maxlength: campo.tamanhoMaximo
       });
 
       if (campo.obrigatorio) {
@@ -449,8 +459,9 @@
   }
 
   function abrirForm(cliente = null) {
-    $('#cli-dialogo-titulo').textContent =
-      'Novo cliente';
+    $('#cli-dialogo-titulo').textContent = cliente
+      ? 'Editar cliente'
+      : 'Novo cliente';
 
     montarFormulario(cliente);
 
@@ -463,16 +474,26 @@
   function coletarDados() {
     const dados = {};
 
-    {
-      dados.id_cliente =
-        $('#cli-c-id_cliente').value.trim();
+    // O campo de código só existe no formulário de cadastro.
+    const campoId = $('#cli-c-id_cliente');
+
+    if (campoId) {
+      dados.id_cliente = campoId.value.trim();
     }
 
     CAMPOS.forEach(campo => {
       const entrada = $('#cli-c-' + campo.nome);
+      const texto = entrada.value.trim();
 
-      dados[campo.nome] = entrada.value.trim();
+      // Campo opcional em branco vai como null, não como texto vazio.
+      dados[campo.nome] = texto === '' && !campo.obrigatorio
+        ? null
+        : texto;
     });
+
+    if (dados.uf) {
+      dados.uf = dados.uf.toUpperCase();
+    }
 
     return dados;
   }
@@ -508,10 +529,6 @@
       return;
     }
 
-    if (dados.cadastro === '') {
-      dados.cadastro = null;
-    }
-
     ocupado = true;
     $('#cli-salvar').disabled = true;
 
@@ -520,9 +537,9 @@
 
       $('#cli-dialogo').close();
 
-      await carregar();
-
-      definirAviso('Cliente cadastrado com sucesso.');
+      if (await carregar()) {
+        definirAviso('Cliente cadastrado com sucesso.');
+      }
 
     } catch (erro) {
       console.error('Falha ao salvar cliente:', erro, erro.dados);
@@ -535,13 +552,11 @@
   }
 
   function descreverAlvo(cliente) {
-    const alvo = obterAlvo(cliente);
+    const idCliente = obterIdCliente(cliente);
 
-    const rotulo = !alvo
-      ? 'sem código'
-      : alvo.campo === 'id_cliente'
-        ? `código ${alvo.valor}`
-        : `registro interno nº ${alvo.valor}, sem código de cliente`;
+    const rotulo = idValido(idCliente)
+      ? `código ${idCliente}`
+      : 'sem código';
 
     return `Deseja realmente excluir "${nomeDe(cliente)}" (${rotulo})?`;
   }
@@ -553,6 +568,7 @@
       descreverAlvo(cliente);
 
     $('#cli-erro-excluir').hidden = true;
+    $('#cli-erro-excluir').textContent = '';
 
     $('#cli-confirmar').showModal();
   }
@@ -560,17 +576,18 @@
   async function excluir() {
     if (ocupado || !excluindo) return;
 
-    const alvo = obterAlvo(excluindo);
+    const idCliente = obterIdCliente(excluindo);
 
-    if (!alvo) {
+    if (!idValido(idCliente)) {
       $('#cli-erro-excluir').textContent =
-        'Este registro não tem id_cliente nem id. Chaves recebidas da API: ' + chavesDe(excluindo);
+        'Este registro não tem id_cliente e não pode ser excluído por aqui. Chaves recebidas da API: ' +
+        chavesDe(excluindo);
 
       $('#cli-erro-excluir').hidden = false;
       return;
     }
 
-    const url = urlDoCliente(alvo.valor, alvo.campo);
+    const url = urlDoCliente(idCliente);
 
     ocupado = true;
     $('#cli-excluir').disabled = true;
@@ -579,11 +596,10 @@
       await requisitar('DELETE', url);
 
       $('#cli-confirmar').close();
-      excluindo = null;
 
-      await carregar();
-
-      definirAviso('Cliente excluído com sucesso.');
+      if (await carregar()) {
+        definirAviso('Cliente excluído com sucesso.');
+      }
 
     } catch (erro) {
       console.error('Falha ao excluir cliente:', url, erro, erro.dados);
@@ -593,7 +609,7 @@
       if (erro.status === 404) {
         texto = typeof erro.dados === 'string'
           ? `A rota não existe na API: DELETE ${url} (404). Confira api/routes.py.`
-          : `A API não achou ${alvo.campo} = "${alvo.valor}" na tabela (DELETE ${url}).`;
+          : `A API não achou id_cliente = "${idCliente}" na tabela (DELETE ${url}).`;
       }
 
       $('#cli-erro-excluir').textContent = texto;
@@ -606,8 +622,9 @@
   }
 
   function iniciar() {
-    console.info('clientes.js ' + VERSAO + ' carregado');
     if (!$('#clientes')) return;
+
+    console.info('clientes.js ' + VERSAO + ' carregado');
 
     $('#cli-novo').addEventListener('click', () => {
       abrirForm(null);
@@ -625,6 +642,9 @@
 
     $('#cli-cancelar-excluir').addEventListener('click', () => {
       $('#cli-confirmar').close();
+    });
+
+    $('#cli-confirmar').addEventListener('close', () => {
       excluindo = null;
     });
 
