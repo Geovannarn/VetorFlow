@@ -10,10 +10,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
-  <link rel="stylesheet" href="{% static 'css/clientes.css' %}?v=4">
-  <script src="{% static 'css/js/script.js' %}?v=4" defer></script>
-  <script src="{% static 'css/js/clientes.js' %}?v=4" defer></script>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'css/clientes.css' %}?v=5">
+  <script src="{% static 'css/js/script.js' %}?v=5" defer></script>
+  <script src="{% static 'css/js/clientes.js' %}?v=5" defer></script>
+  <script src="{% static 'css/js/benchmark.js' %}?v=1" defer></script>
 </head>
 <body>
 
@@ -27,13 +28,14 @@
   <div class="topbar" aria-hidden="true"></div>
 
   <header class="cabecalho">
-    <a class="logo" href="#consulta" aria-label="primora, ir para o início">primora<span>.</span></a>
+    <a class="logo" href="#inicio" aria-label="primora, ir para o início">primora<span>.</span></a>
     <nav class="menu" aria-label="Principal">
       <a href="#inicio" data-alvo="inicio" aria-current="true">Início</a>
       <a href="#consulta" data-alvo="consulta">Consulta</a>
       <a href="#clientes" data-alvo="clientes">Clientes</a>
       <a href="#importacao" data-alvo="importacao">Importação</a>
       <a href="#regras" data-alvo="regras">Regras</a>
+      <a href="#benchmark" data-alvo="benchmark">Benchmark</a>
     </nav>
   </header>
 
@@ -245,7 +247,7 @@
               </tr>
               <tr>
                 <th scope="row">Data</th>
-                <td>AAAA-MM-DD, DD/MM/AAAA ou DD-MM-AAAA</td>
+                <td>AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA ou Mês DD, AAAA</td>
                 <td class="exemplo">31/12/2025 → 2025-12-31</td>
               </tr>
             </tbody>
@@ -264,14 +266,14 @@
         </div>
         <div class="resultado__acoes">
           <button class="btn" type="button" id="baixar-limpo">Baixar limpo <span aria-hidden="true">↓</span></button>
-          <button class="btn btn--contorno" type="button" id="baixar-rejeitados">Baixar rejeitados</button>
+          <button class="btn btn--contorno" type="button" id="baixar-rejeitados">Baixar com erro</button>
         </div>
       </div>
 
       <dl class="resumo">
         <div><dt>Linhas lidas</dt><dd id="res-total">0</dd></div>
         <div><dt>Aceitas</dt><dd id="res-aceitas">0</dd></div>
-        <div class="resumo__rejeitadas"><dt>Rejeitadas</dt><dd id="res-rejeitadas">0</dd></div>
+        <div class="resumo__rejeitadas"><dt>Com erro</dt><dd id="res-rejeitadas">0</dd></div>
       </dl>
       <p class="aviso" id="res-colunas"></p>
 
@@ -279,6 +281,31 @@
         <table id="tabela-resultado"></table>
       </div>
       <p class="aviso" id="res-nota"></p>
+    </section>
+
+    <!-- ========== BENCHMARK ========== -->
+    <section class="secao secao--benchmark" id="benchmark" aria-labelledby="titulo-benchmark">
+
+      <div class="cli-topo">
+        <div>
+          <p class="rotulo">Benchmark</p>
+          <h2 class="titulo titulo--menor" id="titulo-benchmark">Desempenho do VetorFlow</h2>
+          <p class="lead">Tempo, memória e velocidade de cada etapa, conforme o volume de dados cresce.</p>
+        </div>
+        <div class="bm-acoes">
+          <button class="btn btn--contorno" type="button" id="bm-atualizar">Atualizar</button>
+          <a class="btn" href="/api/benchmark/relatorio/" target="_blank" rel="noopener" id="bm-relatorio" hidden>Relatório completo <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+
+      <p class="aviso" id="bm-status" role="status" aria-live="polite"></p>
+
+      <dl class="resumo" id="bm-resumo"></dl>
+
+      <div id="bm-tabelas"></div>
+
+      <div class="bm-graficos" id="bm-graficos"></div>
+
     </section>
 
   </main>

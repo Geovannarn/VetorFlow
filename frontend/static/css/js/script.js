@@ -213,7 +213,6 @@ function processarCsv(texto) {
     const erros = [];
     campos.forEach((c, j) => { if (c.erro) erros.push(cabecalho[j] + ': ' + c.erro); });
 
-    // Células além do cabeçalho seriam descartadas em silêncio.
     if (celulas.slice(cabecalho.length).some((c) => c.trim() !== '')) {
       erros.push('Linha tem mais colunas que o cabeçalho');
     }

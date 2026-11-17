@@ -1,11 +1,3 @@
-/* ============================================================
-   primora. · Gerenciamento de clientes
-   Reaproveita as classes do style.css (.btn, .btn--contorno, .rotulo,
-   .titulo, .lead, .aviso, .campo__*). Carregue DEPOIS do style.css.
-   Se as janelas (dialog) ficarem com cor diferente do resto do site,
-   ajuste --cli-fundo e --cli-texto abaixo.
-   ============================================================ */
-
 .secao--clientes {
   --cli-linha: color-mix(in srgb, currentColor 16%, transparent);
   --cli-fundo: #fff;
@@ -213,4 +205,65 @@
 .btn:disabled {
   opacity: .6;
   cursor: progress;
+}
+
+.secao--benchmark {
+  --cli-linha: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.secao--benchmark [hidden] {
+  display: none !important;
+}
+
+.bm-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.bm-acoes a.btn {
+  text-decoration: none;
+}
+
+.bm-subtitulo {
+  margin: 2rem 0 .75rem;
+  font: 400 .6875rem/1 var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cinza);
+}
+
+.secao--benchmark .cli-tabela th:not(:first-child),
+.secao--benchmark .cli-tabela td:not(:first-child) {
+  text-align: right;
+}
+
+.secao--benchmark .cli-tabela tbody th {
+  font-weight: 500;
+}
+
+.bm-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.bm-figura {
+  margin: 0;
+  padding: .75rem;
+  background: #fff;
+  border: 1px solid var(--cli-linha);
+}
+
+.bm-figura img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bm-figura figcaption {
+  margin-top: .5rem;
+  font-size: .8125rem;
+  color: var(--cinza);
 }
