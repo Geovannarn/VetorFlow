@@ -27,6 +27,16 @@ def conectar_banco():
 
 def criar_tabela(conexao):
     cursor = conexao.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS benchmark_clientes (
+            id_cliente            TEXT,
+            nome                  TEXT,
+            documento             TEXT,
+            cep                   TEXT,
+            endereco              TEXT,
+            regiao_administrativa TEXT
+        )
+    """)
     cursor.execute("DROP INDEX IF EXISTS idx_benchmark_regiao")
     cursor.execute("TRUNCATE TABLE benchmark_clientes")
     conexao.commit()

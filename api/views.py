@@ -6,6 +6,11 @@ from rest_framework import status
 
 from audit.logger import registrar_operacao
 from database.connection import conectar
+from normalizers.cnpj import normalizar_cnpj
+from normalizers.data import normalizar_data
+from normalizers.email import normalizar_email, validar_email
+from normalizers.postal_code import normalizar_cep
+from normalizers.telefone import padronizar_telefone
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +37,77 @@ def valor(dados, campo):
         x = x.strip()
 
     return None if x in ("", None) else x
+
+
+def padronizar_campo(campo, bruto):
+    if bruto is None:
+        return None, None
+
+    if campo == "cnpj":
+        cnpj = normalizar_cnpj(bruto)
+
+        if cnpj is None:
+            return None, "CNPJ precisa ter 14 dígitos."
+
+        return cnpj, None
+
+    elif campo == "telefone":
+        telefone = padronizar_telefone(bruto)
+
+        if telefone is None:
+            return None, "Telefone precisa ter 10 ou 11 dígitos."
+
+        return telefone, None
+
+    elif campo == "email":
+        email = normalizar_email(bruto)
+
+        if not validar_email(email):
+            return None, "E-mail inválido."
+
+        return email, None
+
+    elif campo == "cep":
+        cep = normalizar_cep(bruto)
+
+        if cep is None:
+            return None, "CEP precisa ter 8 dígitos."
+
+        return cep, None
+
+    elif campo == "uf":
+        uf = str(bruto).strip().upper()
+
+        if len(uf) != 2 or not uf.isalpha():
+            return None, "UF precisa ter 2 letras."
+
+        return uf, None
+
+    elif campo == "cadastro":
+        data = normalizar_data(bruto)
+
+        if data is None:
+            return None, "Data de cadastro inválida. Use AAAA-MM-DD ou DD/MM/AAAA."
+
+        return data, None
+
+    else:
+        return bruto, None
+
+
+def padronizar_dados(dados, campos):
+    valores = {}
+    erros = []
+
+    for campo in campos:
+        padronizado, erro = padronizar_campo(campo, valor(dados, campo))
+
+        if erro is not None:
+            erros.append(erro)
+
+        valores[campo] = padronizado
+
+    return valores, erros
 
 
 def codigo_erro(erro):
@@ -172,6 +248,16 @@ def clientes(request, id_cliente=None):
                         novo_id
                     )
 
+                valores, erros = padronizar_dados(dados, CAMPOS)
+
+                if erros:
+                    return responder(
+                        request,
+                        {"erro": " ".join(erros)},
+                        status.HTTP_400_BAD_REQUEST,
+                        novo_id
+                    )
+
                 if cliente_existe(cursor, novo_id):
                     return responder(
                         request,
@@ -203,16 +289,16 @@ def clientes(request, id_cliente=None):
                     """,
                     (
                         novo_id,
-                        razao_social,
-                        valor(dados, "cnpj"),
-                        valor(dados, "telefone"),
-                        valor(dados, "email"),
-                        valor(dados, "bairro"),
-                        valor(dados, "cep"),
-                        valor(dados, "cidade"),
-                        valor(dados, "uf"),
-                        valor(dados, "cadastro"),
-                        valor(dados, "responsavel"),
+                        valores["razao_social"],
+                        valores["cnpj"],
+                        valores["telefone"],
+                        valores["email"],
+                        valores["bairro"],
+                        valores["cep"],
+                        valores["cidade"],
+                        valores["uf"],
+                        valores["cadastro"],
+                        valores["responsavel"],
                     )
                 )
 
@@ -227,7 +313,7 @@ def clientes(request, id_cliente=None):
                     },
                     status.HTTP_201_CREATED,
                     novo_id,
-                    {campo: valor(dados, campo) for campo in CAMPOS}
+                    valores
                 )
 
             elif request.method == "PUT":
@@ -241,16 +327,22 @@ def clientes(request, id_cliente=None):
 
                 dados = request.data
 
-                campos_atualizar = {
-                    campo: valor(dados, campo)
-                    for campo in CAMPOS
-                    if campo in dados
-                }
+                campos_enviados = [campo for campo in CAMPOS if campo in dados]
 
-                if not campos_atualizar:
+                if not campos_enviados:
                     return responder(
                         request,
                         {"erro": "Nenhum campo válido foi enviado."},
+                        status.HTTP_400_BAD_REQUEST,
+                        id_cliente
+                    )
+
+                campos_atualizar, erros = padronizar_dados(dados, campos_enviados)
+
+                if erros:
+                    return responder(
+                        request,
+                        {"erro": " ".join(erros)},
                         status.HTTP_400_BAD_REQUEST,
                         id_cliente
                     )

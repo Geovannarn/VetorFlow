@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 import pandas as pd
 
@@ -7,6 +8,7 @@ from integrations.brasilapi import consultar_brasilapi
 from integrations.viacep import consultar_viacep
 from neighborhood.resolver import resolver_bairro
 from normalizers.cnpj import normalizar_cnpj, validar_cnpj
+from normalizers.data import normalizar_data
 from normalizers.email import normalizar_email, validar_email
 from normalizers.postal_code import normalizar_cep
 from normalizers.telefone import normalizar_telefone
@@ -18,8 +20,6 @@ try:
 except ImportError:
     from integrations.cahe import armazenar_cache, buscar_cache
 
-
-FORMATOS_DATA = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%b %d, %Y")
 
 COLUNAS_CSV = [
     "id_cliente",
@@ -35,7 +35,12 @@ COLUNAS_CSV = [
     "vendedor_responsavel",
 ]
 
-COLUNAS_OBRIGATORIAS = ["id_cliente", "razao_social", "cnpj", "cep"]
+COLUNAS_OBRIGATORIAS = [
+    "id_cliente",
+    "razao_social",
+    "cnpj",
+    "cep",
+]
 
 COLUNAS_BANCO = [
     "id_cliente",
@@ -74,25 +79,24 @@ SQL_INSERIR = """
 
 CEP_ZERADO = "00000000"
 
-CSV_PADRAO = Path(__file__).resolve().parents[1] / "data" / "raw" / "clientes_distribuidora_vetor.csv"
+CSV_PADRAO = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "raw"
+    / "clientes_distribuidora_vetor.csv"
+)
 
 
 def converter_data(valor):
     if pd.isna(valor):
         return None
 
-    texto = str(valor).strip()
+    resultado = normalizar_data(str(valor))
 
-    if not texto:
+    if resultado is None:
         return None
 
-    for formato in FORMATOS_DATA:
-        try:
-            return pd.to_datetime(texto, format=formato).date()
-        except ValueError:
-            continue
-
-    return None
+    return datetime.strptime(resultado, "%Y-%m-%d").date()
 
 
 def para_banco(valor):
@@ -122,12 +126,24 @@ def limpar_texto(valor):
 
 def carregar_csv(caminho):
     try:
-        dados = pd.read_csv(caminho, sep=";", dtype=str, encoding="utf-8-sig")
+        dados = pd.read_csv(
+            caminho,
+            sep=";",
+            dtype=str,
+            encoding="utf-8-sig"
+        )
     except UnicodeDecodeError:
-        dados = pd.read_csv(caminho, sep=";", dtype=str, encoding="cp1252")
+        dados = pd.read_csv(
+            caminho,
+            sep=";",
+            dtype=str,
+            encoding="cp1252"
+        )
 
     if "data_cadastro" in dados.columns:
-        dados["data_cadastro"] = dados["data_cadastro"].map(converter_data)
+        dados["data_cadastro"] = dados["data_cadastro"].map(
+            converter_data
+        )
 
     return dados
 
@@ -135,7 +151,11 @@ def carregar_csv(caminho):
 def padronizar_endereco(resultado):
     return {
         "bairro": resultado.get("bairro") or resultado.get("neighborhood"),
-        "cidade": resultado.get("localidade") or resultado.get("city") or resultado.get("cidade"),
+        "cidade": (
+            resultado.get("localidade")
+            or resultado.get("city")
+            or resultado.get("cidade")
+        ),
         "uf": resultado.get("uf") or resultado.get("state"),
     }
 
@@ -249,8 +269,14 @@ def tratar_linha(linha, id_cliente, razao_social, enderecos, contagem):
 
     endereco = enderecos.get(cep, {})
 
-    bairro, criterio = resolver_bairro(linha["bairro_informado"], endereco.get("bairro"))
-    contagem["criterios_bairro"][criterio] = contagem["criterios_bairro"].get(criterio, 0) + 1
+    bairro, criterio = resolver_bairro(
+        linha["bairro_informado"],
+        endereco.get("bairro")
+    )
+
+    contagem["criterios_bairro"][criterio] = (
+        contagem["criterios_bairro"].get(criterio, 0) + 1
+    )
 
     cidade = limpar_texto(linha["cidade"])
 
@@ -315,10 +341,24 @@ def tratar_dados(dados, consultar_api=True):
             continue
 
         ids_vistos.add(id_cliente)
-        aceitos.append(tratar_linha(linha, id_cliente, razao_social, enderecos, contagem))
+
+        aceitos.append(
+            tratar_linha(
+                linha,
+                id_cliente,
+                razao_social,
+                enderecos,
+                contagem
+            )
+        )
+
         contagem["aceitos"] += 1
 
-    return pd.DataFrame(aceitos, columns=COLUNAS_BANCO), pd.DataFrame(rejeitados), contagem
+    return (
+        pd.DataFrame(aceitos, columns=COLUNAS_BANCO),
+        pd.DataFrame(rejeitados),
+        contagem
+    )
 
 
 def carregar_no_banco(tratados):
@@ -354,15 +394,29 @@ def carregar_no_banco(tratados):
 def processar_csv(caminho, consultar_api=True, gravar=True):
     dados = carregar_csv(caminho)
 
-    ausentes = [coluna for coluna in COLUNAS_CSV if coluna not in dados.columns]
+    ausentes = [
+        coluna
+        for coluna in COLUNAS_CSV
+        if coluna not in dados.columns
+    ]
 
     if ausentes:
-        raise ValueError("Colunas ausentes no CSV: " + ", ".join(ausentes))
+        raise ValueError(
+            "Colunas ausentes no CSV: " + ", ".join(ausentes)
+        )
 
-    checks = executar_checks(dados, COLUNAS_OBRIGATORIAS, ["id_cliente"])
+    checks = executar_checks(
+        dados,
+        COLUNAS_OBRIGATORIAS,
+        ["id_cliente"]
+    )
+
     metricas = calcular_metricas(dados, checks)
 
-    tratados, rejeitados, contagem = tratar_dados(dados, consultar_api)
+    tratados, rejeitados, contagem = tratar_dados(
+        dados,
+        consultar_api
+    )
 
     if gravar and len(tratados) > 0:
         contagem["inseridos"] = carregar_no_banco(tratados)
@@ -382,25 +436,46 @@ def mostrar_resumo(resultado):
 
     print("QUALIDADE DA BASE DE ENTRADA")
     print("  registros:", metricas["total_registros"])
-    print("  nulos:", metricas["total_nulos"], f"({metricas['percentual_nulos']}%)")
-    print("  duplicados:", metricas["total_duplicados"], f"({metricas['percentual_duplicados']}%)")
+    print(
+        "  nulos:",
+        metricas["total_nulos"],
+        f"({metricas['percentual_nulos']}%)"
+    )
+    print(
+        "  duplicados:",
+        metricas["total_duplicados"],
+        f"({metricas['percentual_duplicados']}%)"
+    )
 
     print("\nTRATAMENTO")
     print("  aceitos:", tratamento["aceitos"])
     print("  rejeitados:", tratamento["rejeitados"])
-    print("  CNPJ com formato inválido:", tratamento["cnpj_formato_invalido"])
-    print("  CNPJ com dígito verificador inválido:", tratamento["cnpj_digito_invalido"])
+    print(
+        "  CNPJ com formato inválido:",
+        tratamento["cnpj_formato_invalido"]
+    )
+    print(
+        "  CNPJ com dígito verificador inválido:",
+        tratamento["cnpj_digito_invalido"]
+    )
     print("  telefones inválidos:", tratamento["telefone_invalido"])
     print("  e-mails inválidos:", tratamento["email_invalido"])
     print("  CEPs inválidos:", tratamento["cep_invalido"])
 
     print("\nENRIQUECIMENTO POR CEP")
     print("  CEPs consultados:", tratamento["cep_consultados"])
-    print("  CEPs não encontrados:", tratamento["cep_nao_encontrados"])
-    print("  cidades preenchidas:", tratamento["cidade_preenchida"])
+    print(
+        "  CEPs não encontrados:",
+        tratamento["cep_nao_encontrados"]
+    )
+    print(
+        "  cidades preenchidas:",
+        tratamento["cidade_preenchida"]
+    )
     print("  UFs preenchidas:", tratamento["uf_preenchida"])
 
     print("\nRESOLUÇÃO DE BAIRROS")
+
     for criterio, quantidade in tratamento["criterios_bairro"].items():
         print(f"  {criterio}: {quantidade}")
 

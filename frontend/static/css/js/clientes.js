@@ -1,10 +1,10 @@
 (function () {
   'use strict';
 
-  const VERSAO = 'v7';
+  const VERSAO = 'v8';
   const API_URL = '/api/clientes/';
-  const TEMPO_LIMITE_MS = 10000;
 
+  // Campos do cliente (o código é tratado à parte, só no cadastro).
   const CAMPOS = [
     { nome: 'razao_social', rotulo: 'Razão social', obrigatorio: true },
     { nome: 'cnpj', rotulo: 'CNPJ' },
@@ -18,128 +18,82 @@
     { nome: 'responsavel', rotulo: 'Responsável' }
   ];
 
-  const $ = (seletor, raiz = document) =>
-    raiz.querySelector(seletor);
+  const $ = seletor => document.querySelector(seletor);
 
-  let clientes = [];
-  let excluindo = null;
-  let ocupado = false;
+  let clientes = [];     // lista vinda da API
+  let editando = null;   // cliente em edição (null = novo cadastro)
+  let excluindo = null;  // cliente que será excluído
+  let ocupado = false;   // evita cliques duplos durante uma requisição
 
-  const soDigitos = valor =>
-    String(valor ?? '').replace(/\D/g, '');
 
-  function idValido(valor) {
-    return valor !== null &&
-      valor !== undefined &&
-      String(valor).trim() !== '';
+  // ---------- Utilitários ----------
+
+  const soDigitos = valor => String(valor ?? '').replace(/\D/g, '');
+
+  const nomeDe = cliente => cliente.razao_social || 'Cliente sem nome';
+
+  const urlDoCliente = id => API_URL + encodeURIComponent(id) + '/';
+
+  // Cria um elemento HTML. Usa textContent, então não há risco de injetar HTML.
+  function criar(tag, atributos = {}, texto = '') {
+    const elemento = document.createElement(tag);
+
+    Object.entries(atributos).forEach(([chave, valor]) => {
+      elemento.setAttribute(chave, valor);
+    });
+
+    elemento.textContent = texto;
+    return elemento;
   }
 
-  function obterIdCliente(cliente) {
-    if (!cliente || typeof cliente !== 'object') return null;
-
-    const chave = Object.keys(cliente).find(
-      nome => nome.toLowerCase().replace(/[^a-z]/g, '') === 'idcliente'
-    );
-
-    if (chave && idValido(cliente[chave])) return cliente[chave];
-
-    return null;
-  }
-
-  function chavesDe(cliente) {
-    return cliente && typeof cliente === 'object'
-      ? Object.keys(cliente).join(', ')
-      : '(registro inválido)';
-  }
-
-  function lerCookie(nome) {
-    const cookie = document.cookie
+  function lerCsrf() {
+    const item = document.cookie
       .split('; ')
-      .find(item => item.startsWith(nome + '='));
+      .find(cookie => cookie.startsWith('csrftoken='));
 
-    return cookie
-      ? decodeURIComponent(cookie.slice(nome.length + 1))
-      : '';
+    return item ? decodeURIComponent(item.split('=')[1]) : '';
   }
 
-  function urlDoCliente(idCliente) {
-    return API_URL + encodeURIComponent(idCliente) + '/';
-  }
-
+  // Faz a chamada à API e devolve o JSON. Em caso de erro, lança uma exceção
+  // com a mensagem enviada pelo servidor.
   async function requisitar(metodo, url, corpo = null) {
-    const headers = {
-      Accept: 'application/json'
-    };
+    const headers = { Accept: 'application/json' };
 
-    if (corpo) {
-      headers['Content-Type'] = 'application/json';
+    if (corpo) headers['Content-Type'] = 'application/json';
+
+    if (metodo !== 'GET') {
+      const csrf = lerCsrf();
+      if (csrf) headers['X-CSRFToken'] = csrf;
     }
 
-    if (!['GET', 'OPTIONS', 'HEAD'].includes(metodo)) {
-      const csrf = lerCookie('csrftoken');
+    const resposta = await fetch(url, {
+      method: metodo,
+      headers,
+      credentials: 'same-origin',
+      body: corpo ? JSON.stringify(corpo) : undefined
+    });
 
-      if (csrf) {
-        headers['X-CSRFToken'] = csrf;
-      }
-    }
-
-    const controller = new AbortController();
-
-    const timer = setTimeout(
-      () => controller.abort(),
-      TEMPO_LIMITE_MS
-    );
+    const texto = await resposta.text();
+    let dados = null;
 
     try {
-      const resposta = await fetch(url, {
-        method: metodo,
-        headers,
-        credentials: 'same-origin',
-        body: corpo ? JSON.stringify(corpo) : undefined,
-        signal: controller.signal
-      });
-
-      const texto = await resposta.text();
-
-      let dados = null;
-
-      if (texto) {
-        try {
-          dados = JSON.parse(texto);
-        } catch {
-          dados = texto;
-        }
-      }
-
-      if (!resposta.ok) {
-        const erro = new Error(
-          dados?.erro ||
-          dados?.detail ||
-          `Erro HTTP ${resposta.status}`
-        );
-
-        erro.status = resposta.status;
-        erro.dados = dados;
-
-        throw erro;
-      }
-
-      return dados;
-
-    } finally {
-      clearTimeout(timer);
+      dados = texto ? JSON.parse(texto) : null;
+    } catch {
+      dados = texto;
     }
-  }
 
-  function nomeDe(cliente) {
-    return cliente.razao_social || 'Cliente sem nome';
+    if (!resposta.ok) {
+      const erro = new Error(
+        dados?.erro || dados?.detail || `Erro HTTP ${resposta.status}`
+      );
+      erro.status = resposta.status;
+      throw erro;
+    }
+
+    return dados;
   }
 
   function mensagemDeErro(erro) {
-    if (erro.name === 'AbortError') {
-      return 'A requisição demorou demais. Tente novamente.';
-    }
-
     if (erro instanceof TypeError) {
       return 'Não foi possível conectar ao servidor. Verifique se ele está rodando.';
     }
@@ -148,325 +102,232 @@
       return 'Cliente não encontrado. Atualize a lista e tente novamente.';
     }
 
-    if (erro.status === 409) {
-      return erro.dados?.erro ||
-        'Já existe um cliente cadastrado com esse código.';
-    }
-
-    if (erro.status === 400) {
-      if (erro.dados && typeof erro.dados === 'object') {
-        return erro.dados.erro ||
-          erro.dados.detail ||
-          JSON.stringify(erro.dados);
-      }
-
-      return 'Os dados enviados não foram aceitos.';
-    }
-
     if (erro.status === 403) {
-      return 'Requisição recusada (403). Recarregue a página com Ctrl+F5 e tente novamente.';
+      return 'Requisição recusada (403). Recarregue a página com Ctrl+F5.';
     }
 
-    if (erro.status >= 500) {
-      if (erro.dados && erro.dados.erro) return erro.dados.erro;
-
-      return `Erro interno do servidor (HTTP ${erro.status}). Veja o erro completo no terminal do Django.`;
-    }
-
-    return erro.message || 'Não foi possível concluir a operação.';
+    // 400, 409 e 500: a API já manda a mensagem explicando o problema.
+    return erro.message;
   }
 
   function definirAviso(texto, erro = false) {
     const aviso = $('#cli-status');
-
     aviso.textContent = texto;
     aviso.classList.toggle('aviso--erro', erro);
   }
 
-  function formatarValor(campo, valor) {
-    if (valor === null || valor === undefined || valor === '') {
-      return '';
-    }
-
-    if (campo === 'cnpj') {
-      const d = soDigitos(valor);
-
-      if (d.length === 14) {
-        return d.replace(
-          /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
-          '$1.$2.$3/$4-$5'
-        );
-      }
-    }
-
-    if (campo === 'cep') {
-      const d = soDigitos(valor);
-
-      if (d.length === 8) {
-        return d.replace(/^(\d{5})(\d{3})$/, '$1-$2');
-      }
-    }
-
-    if (campo === 'cadastro') {
-      const data = String(valor).slice(0, 10);
-
-      if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-        const [ano, mes, dia] = data.split('-');
-        return `${dia}/${mes}/${ano}`;
-      }
-    }
-
-    return String(valor);
+  function mostrarErroForm(texto) {
+    const aviso = $('#cli-erro-form');
+    aviso.textContent = texto;
+    aviso.hidden = !texto;
   }
 
-  function criarElemento(tag, atributos = {}, texto = null) {
-    const elemento = document.createElement(tag);
+  function mostrarErroExcluir(texto) {
+    const aviso = $('#cli-erro-excluir');
+    aviso.textContent = texto;
+    aviso.hidden = !texto;
+  }
 
-    Object.entries(atributos).forEach(([chave, valor]) => {
-      if (valor !== null && valor !== undefined) {
-        elemento.setAttribute(chave, valor);
-      }
-    });
+  // Bloqueia o botão enquanto a tarefa roda e libera no final.
+  async function comBloqueio(botao, tarefa) {
+    if (ocupado) return;
 
-    if (texto !== null) {
-      elemento.textContent = texto;
+    ocupado = true;
+    botao.disabled = true;
+
+    try {
+      await tarefa();
+    } finally {
+      ocupado = false;
+      botao.disabled = false;
+    }
+  }
+
+
+  // ---------- Formatação ----------
+
+  function formatarValor(campo, valor) {
+    if (valor === null || valor === undefined || valor === '') return '';
+
+    const texto = String(valor);
+    const digitos = soDigitos(texto);
+
+    if (campo === 'cnpj' && digitos.length === 14) {
+      return digitos.replace(
+        /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+        '$1.$2.$3/$4-$5'
+      );
     }
 
-    return elemento;
+    if (campo === 'cep' && digitos.length === 8) {
+      return digitos.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+    }
+
+    if (campo === 'cadastro' && /^\d{4}-\d{2}-\d{2}/.test(texto)) {
+      const [ano, mes, dia] = texto.slice(0, 10).split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    return texto;
+  }
+
+
+  function criarBotao(texto, cliente, aoClicar) {
+    const botao = criar(
+      'button',
+      {
+        type: 'button',
+        class: 'cli-acao',
+        'aria-label': `${texto} ${nomeDe(cliente)}`
+      },
+      texto
+    );
+
+    botao.addEventListener('click', aoClicar);
+    return botao;
+  }
+
+  function criarLinha(cliente) {
+    const linha = criar('tr');
+
+    linha.append(criar('td', {}, cliente.id_cliente ?? '—'));
+
+    CAMPOS.forEach(campo => {
+      const valor = formatarValor(campo.nome, cliente[campo.nome]);
+      const celula = criar('td', {}, valor || '—');
+
+      if (!valor) celula.classList.add('cli-nulo');
+
+      linha.append(celula);
+    });
+
+    const acoes = criar('td', { class: 'cli-acoes' });
+
+    acoes.append(
+      criarBotao('Editar', cliente, () => abrirForm(cliente)),
+      criarBotao('Excluir', cliente, () => abrirExcluir(cliente))
+    );
+
+    linha.append(acoes);
+    return linha;
+  }
+
+  // Junta todos os valores do cliente em um texto só, para a busca.
+  function textoParaBusca(cliente) {
+    return [
+      cliente.id_cliente,
+      ...CAMPOS.map(campo => formatarValor(campo.nome, cliente[campo.nome])),
+      ...CAMPOS.map(campo => cliente[campo.nome])
+    ].join(' | ').toLowerCase();
   }
 
   function renderizar() {
-    const tabela = $('#cli-tabela');
-    const busca = $('#cli-busca');
-    const contagem = $('#cli-contagem');
+    const pesquisa = $('#cli-busca').value.trim().toLowerCase();
 
-    const pesquisa = busca.value
-      .trim()
-      .toLowerCase();
+    const filtrados = clientes.filter(cliente =>
+      textoParaBusca(cliente).includes(pesquisa)
+    );
 
-    const filtrados = clientes.filter(cliente => {
-      const valores = [
-        obterIdCliente(cliente),
-        ...CAMPOS.map(campo =>
-          formatarValor(campo.nome, cliente[campo.nome])
-        ),
-        ...CAMPOS.map(campo => cliente[campo.nome])
-      ];
-
-      return valores.some(valor =>
-        String(valor ?? '')
-          .toLowerCase()
-          .includes(pesquisa)
-      );
-    });
-
-    contagem.textContent =
+    $('#cli-contagem').textContent =
       `${filtrados.length} de ${clientes.length} clientes`;
 
-    tabela.replaceChildren();
+    const titulos = ['Código', ...CAMPOS.map(campo => campo.rotulo), 'Ações'];
 
-    const cabecalho = criarElemento('tr');
-
-    cabecalho.append(
-      criarElemento('th', { scope: 'col' }, 'Código')
-    );
-
-    CAMPOS.forEach(campo => {
-      cabecalho.append(
-        criarElemento('th', { scope: 'col' }, campo.rotulo)
-      );
+    const cabecalho = criar('tr');
+    titulos.forEach(titulo => {
+      cabecalho.append(criar('th', { scope: 'col' }, titulo));
     });
 
-    cabecalho.append(
-      criarElemento('th', { scope: 'col' }, 'Ações')
-    );
-
-    const thead = criarElemento('thead');
+    const thead = criar('thead');
     thead.append(cabecalho);
 
-    tabela.append(thead);
-
-    const corpo = criarElemento('tbody');
+    const tbody = criar('tbody');
 
     if (!filtrados.length) {
-      const linha = criarElemento('tr');
-
-      const celula = criarElemento(
-        'td',
-        {
-          colspan: CAMPOS.length + 2,
-          class: 'cli-vazio'
-        },
-        'Nenhum cliente encontrado.'
+      const linha = criar('tr');
+      linha.append(
+        criar(
+          'td',
+          { colspan: titulos.length, class: 'cli-vazio' },
+          'Nenhum cliente encontrado.'
+        )
       );
-
-      linha.append(celula);
-      corpo.append(linha);
-
-    } else {
-      filtrados.forEach(cliente => {
-        const linha = criarElemento('tr');
-
-        const idCliente = obterIdCliente(cliente);
-
-        linha.append(
-          criarElemento('td', {}, idValido(idCliente) ? String(idCliente) : '—')
-        );
-
-        CAMPOS.forEach(campo => {
-          const valor = formatarValor(
-            campo.nome,
-            cliente[campo.nome]
-          );
-
-          const celula = criarElemento(
-            'td',
-            {},
-            valor || '—'
-          );
-
-          if (!valor) {
-            celula.classList.add('cli-nulo');
-          }
-
-          linha.append(celula);
-        });
-
-        const acoes = criarElemento('td', {
-          class: 'cli-acoes'
-        });
-
-        const excluir = criarElemento(
-          'button',
-          {
-            type: 'button',
-            class: 'cli-acao',
-            'aria-label': `Excluir ${nomeDe(cliente)}`
-          },
-          'Excluir'
-        );
-
-        excluir.addEventListener('click', () => {
-          abrirExcluir(cliente);
-        });
-
-        acoes.append(excluir);
-        linha.append(acoes);
-        corpo.append(linha);
-      });
+      tbody.append(linha);
     }
 
-    tabela.append(corpo);
+    filtrados.forEach(cliente => tbody.append(criarLinha(cliente)));
+
+    $('#cli-tabela').replaceChildren(thead, tbody);
   }
 
   async function carregar() {
     try {
       const resposta = await requisitar('GET', API_URL);
 
-      clientes = Array.isArray(resposta)
-        ? resposta
-        : resposta?.results || [];
+      clientes = Array.isArray(resposta) ? resposta : resposta?.results || [];
 
       renderizar();
-
       definirAviso('Clientes carregados com sucesso.');
-
       return true;
 
     } catch (erro) {
       console.error('Falha ao carregar clientes:', erro);
       definirAviso(mensagemDeErro(erro), true);
-
       return false;
     }
   }
 
-  function montarFormulario(cliente = null) {
-    const container = $('#cli-campos');
 
+
+  function criarCampo(id, rotulo, atributos) {
+    const grupo = criar('div', { class: 'cli-campo' });
+
+    grupo.append(
+      criar('label', { class: 'campo__rotulo', for: id }, rotulo),
+      criar('input', { class: 'campo__entrada', id, ...atributos })
+    );
+
+    return grupo;
+  }
+
+  function montarFormulario(cliente) {
+    const container = $('#cli-campos');
     container.replaceChildren();
 
     if (!cliente) {
-      const grupoId = criarElemento('div', {
-        class: 'cli-campo'
-      });
-
-      const labelId = criarElemento(
-        'label',
-        {
-          class: 'campo__rotulo',
-          for: 'cli-c-id_cliente'
-        },
-        'Código do cliente'
+      container.append(
+        criarCampo('cli-c-id_cliente', 'Código do cliente', {
+          name: 'id_cliente',
+          type: 'text',
+          required: 'required'
+        })
       );
-
-      const inputId = criarElemento('input', {
-        class: 'campo__entrada',
-        id: 'cli-c-id_cliente',
-        name: 'id_cliente',
-        type: 'text',
-        required: 'required'
-      });
-
-      grupoId.append(labelId, inputId);
-      container.append(grupoId);
     }
 
     CAMPOS.forEach(campo => {
-      const grupo = criarElemento('div', {
-        class: 'cli-campo'
-      });
+      const atributos = { name: campo.nome, type: campo.tipo || 'text' };
 
-      const id = 'cli-c-' + campo.nome;
+      if (campo.tamanhoMaximo) atributos.maxlength = campo.tamanhoMaximo;
+      if (campo.obrigatorio) atributos.required = 'required';
 
-      const label = criarElemento(
-        'label',
-        {
-          class: 'campo__rotulo',
-          for: id
-        },
-        campo.rotulo
-      );
+      const grupo = criarCampo('cli-c-' + campo.nome, campo.rotulo, atributos);
+      const valor = String(cliente?.[campo.nome] ?? '');
 
-      const input = criarElemento('input', {
-        class: 'campo__entrada',
-        id,
-        name: campo.nome,
-        type: campo.tipo || 'text',
-        maxlength: campo.tamanhoMaximo
-      });
+      grupo.querySelector('input').value =
+        campo.tipo === 'date' ? valor.slice(0, 10) : valor;
 
-      if (campo.obrigatorio) {
-        input.required = true;
-      }
-
-      const valor = cliente?.[campo.nome] ?? '';
-
-      input.value = campo.tipo === 'date'
-        ? String(valor).slice(0, 10)
-        : String(valor);
-
-      const erro = criarElemento('p', {
-        class: 'campo__erro',
-        id: id + '-erro',
-        role: 'alert',
-        hidden: ''
-      });
-
-      grupo.append(label, input, erro);
       container.append(grupo);
     });
   }
 
   function abrirForm(cliente = null) {
-    $('#cli-dialogo-titulo').textContent = cliente
-      ? 'Editar cliente'
-      : 'Novo cliente';
+    editando = cliente;
+
+    $('#cli-dialogo-titulo').textContent =
+      cliente ? 'Editar cliente' : 'Novo cliente';
 
     montarFormulario(cliente);
-
-    $('#cli-erro-form').hidden = true;
-    $('#cli-erro-form').textContent = '';
+    mostrarErroForm('');
 
     $('#cli-dialogo').showModal();
   }
@@ -474,179 +335,121 @@
   function coletarDados() {
     const dados = {};
 
-    // O campo de código só existe no formulário de cadastro.
     const campoId = $('#cli-c-id_cliente');
-
-    if (campoId) {
-      dados.id_cliente = campoId.value.trim();
-    }
+    if (campoId) dados.id_cliente = campoId.value.trim();
 
     CAMPOS.forEach(campo => {
-      const entrada = $('#cli-c-' + campo.nome);
-      const texto = entrada.value.trim();
+      const texto = $('#cli-c-' + campo.nome).value.trim();
 
-      // Campo opcional em branco vai como null, não como texto vazio.
-      dados[campo.nome] = texto === '' && !campo.obrigatorio
-        ? null
-        : texto;
+      dados[campo.nome] = texto === '' && !campo.obrigatorio ? null : texto;
     });
 
-    if (dados.uf) {
-      dados.uf = dados.uf.toUpperCase();
-    }
+    if (dados.uf) dados.uf = dados.uf.toUpperCase();
 
     return dados;
   }
 
-  function mostrarErroForm(texto) {
-    $('#cli-erro-form').textContent = texto;
-    $('#cli-erro-form').hidden = false;
+  function validar(dados, novo) {
+    if (novo && !dados.id_cliente) {
+      return 'Informe o código do cliente.';
+    }
+
+    if (!dados.razao_social) {
+      return 'Informe a razão social do cliente.';
+    }
+
+    if (novo && clientes.some(c => String(c.id_cliente) === dados.id_cliente)) {
+      return 'Já existe um cliente cadastrado com esse código.';
+    }
+
+    return '';
   }
 
   async function salvar(evento) {
     evento.preventDefault();
 
-    if (ocupado) return;
-
+    const alvo = editando; 
     const dados = coletarDados();
 
-    if (!idValido(dados.id_cliente)) {
-      mostrarErroForm('Informe o código do cliente.');
+    const problema = validar(dados, !alvo);
+
+    if (problema) {
+      mostrarErroForm(problema);
       return;
     }
 
-    if (!dados.razao_social) {
-      mostrarErroForm('Informe a razão social do cliente.');
-      return;
-    }
+    await comBloqueio($('#cli-salvar'), async () => {
+      try {
+        if (alvo) {
+          await requisitar('PUT', urlDoCliente(alvo.id_cliente), dados);
+        } else {
+          await requisitar('POST', API_URL, dados);
+        }
 
-    const codigoExiste = clientes.some(cliente =>
-      String(obterIdCliente(cliente)) === String(dados.id_cliente)
-    );
+        $('#cli-dialogo').close();
 
-    if (codigoExiste) {
-      mostrarErroForm('Já existe um cliente cadastrado com esse código.');
-      return;
-    }
+        if (await carregar()) {
+          definirAviso(
+            alvo
+              ? 'Cliente atualizado com sucesso.'
+              : 'Cliente cadastrado com sucesso.'
+          );
+        }
 
-    ocupado = true;
-    $('#cli-salvar').disabled = true;
-
-    try {
-      await requisitar('POST', API_URL, dados);
-
-      $('#cli-dialogo').close();
-
-      if (await carregar()) {
-        definirAviso('Cliente cadastrado com sucesso.');
+      } catch (erro) {
+        console.error('Falha ao salvar cliente:', erro);
+        mostrarErroForm(mensagemDeErro(erro));
       }
-
-    } catch (erro) {
-      console.error('Falha ao salvar cliente:', erro, erro.dados);
-      mostrarErroForm(mensagemDeErro(erro));
-
-    } finally {
-      ocupado = false;
-      $('#cli-salvar').disabled = false;
-    }
+    });
   }
 
-  function descreverAlvo(cliente) {
-    const idCliente = obterIdCliente(cliente);
-
-    const rotulo = idValido(idCliente)
-      ? `código ${idCliente}`
-      : 'sem código';
-
-    return `Deseja realmente excluir "${nomeDe(cliente)}" (${rotulo})?`;
-  }
 
   function abrirExcluir(cliente) {
     excluindo = cliente;
 
     $('#cli-confirmar-texto').textContent =
-      descreverAlvo(cliente);
+      `Deseja realmente excluir "${nomeDe(cliente)}" (código ${cliente.id_cliente})?`;
 
-    $('#cli-erro-excluir').hidden = true;
-    $('#cli-erro-excluir').textContent = '';
-
+    mostrarErroExcluir('');
     $('#cli-confirmar').showModal();
   }
 
   async function excluir() {
-    if (ocupado || !excluindo) return;
+    const alvo = excluindo;
 
-    const idCliente = obterIdCliente(excluindo);
+    if (!alvo) return;
 
-    if (!idValido(idCliente)) {
-      $('#cli-erro-excluir').textContent =
-        'Este registro não tem id_cliente e não pode ser excluído por aqui. Chaves recebidas da API: ' +
-        chavesDe(excluindo);
+    await comBloqueio($('#cli-excluir'), async () => {
+      try {
+        await requisitar('DELETE', urlDoCliente(alvo.id_cliente));
 
-      $('#cli-erro-excluir').hidden = false;
-      return;
-    }
+        $('#cli-confirmar').close();
 
-    const url = urlDoCliente(idCliente);
+        if (await carregar()) {
+          definirAviso('Cliente excluído com sucesso.');
+        }
 
-    ocupado = true;
-    $('#cli-excluir').disabled = true;
-
-    try {
-      await requisitar('DELETE', url);
-
-      $('#cli-confirmar').close();
-
-      if (await carregar()) {
-        definirAviso('Cliente excluído com sucesso.');
+      } catch (erro) {
+        console.error('Falha ao excluir cliente:', erro);
+        mostrarErroExcluir(mensagemDeErro(erro));
       }
-
-    } catch (erro) {
-      console.error('Falha ao excluir cliente:', url, erro, erro.dados);
-
-      let texto = mensagemDeErro(erro);
-
-      if (erro.status === 404) {
-        texto = typeof erro.dados === 'string'
-          ? `A rota não existe na API: DELETE ${url} (404). Confira api/routes.py.`
-          : `A API não achou id_cliente = "${idCliente}" na tabela (DELETE ${url}).`;
-      }
-
-      $('#cli-erro-excluir').textContent = texto;
-      $('#cli-erro-excluir').hidden = false;
-
-    } finally {
-      ocupado = false;
-      $('#cli-excluir').disabled = false;
-    }
+    });
   }
+
 
   function iniciar() {
     if (!$('#clientes')) return;
 
     console.info('clientes.js ' + VERSAO + ' carregado');
 
-    $('#cli-novo').addEventListener('click', () => {
-      abrirForm(null);
-    });
-
+    $('#cli-novo').addEventListener('click', () => abrirForm());
     $('#cli-busca').addEventListener('input', renderizar);
-
     $('#cli-form').addEventListener('submit', salvar);
-
-    $('#cli-cancelar').addEventListener('click', () => {
-      $('#cli-dialogo').close();
-    });
-
+    $('#cli-cancelar').addEventListener('click', () => $('#cli-dialogo').close());
+    $('#cli-dialogo').addEventListener('close', () => { editando = null; });
     $('#cli-excluir').addEventListener('click', excluir);
-
-    $('#cli-cancelar-excluir').addEventListener('click', () => {
-      $('#cli-confirmar').close();
-    });
-
-    $('#cli-confirmar').addEventListener('close', () => {
-      excluindo = null;
-    });
+    $('#cli-cancelar-excluir').addEventListener('click', () => $('#cli-confirmar').close());
+    $('#cli-confirmar').addEventListener('close', () => { excluindo = null; });
 
     carregar();
   }

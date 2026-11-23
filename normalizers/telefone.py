@@ -25,3 +25,18 @@ def validar_telefone(telefone):
         return False
 
     return len(telefone) in (10, 11)
+
+
+def padronizar_telefone(telefone):
+    digitos = normalizar_telefone(telefone)
+
+    if digitos is None:
+        return None
+
+    if len(digitos) > 11 and digitos.startswith("55"):
+        digitos = digitos[2:]
+
+    if len(digitos) not in (10, 11):
+        return None
+
+    return "+55" + digitos

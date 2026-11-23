@@ -188,3 +188,81 @@ def test_excluir_cliente_inexistente(client, banco):
     resposta = client.delete("/api/clientes/NAO_EXISTE/")
 
     assert resposta.status_code == 404
+
+
+def test_criar_cliente_padroniza_campos(client, banco):
+    conexao = banco(linhas=[None, ("CLI9999",)])
+
+    resposta = client.post(
+        "/api/clientes/",
+        {
+            "id_cliente": "CLI9999",
+            "razao_social": "Loja X",
+            "cnpj": "11.222.333/0001-81",
+            "telefone": "(61) 99999-9999",
+            "email": "  CONTATO@Loja.com ",
+            "cep": "71929-000",
+            "uf": "df",
+            "cadastro": "31/12/2025",
+        },
+        format="json",
+    )
+
+    assert resposta.status_code == 201
+
+    _, parametros = conexao._cursor.consultas[-1]
+
+    assert parametros[2] == "11222333000181"
+    assert parametros[3] == "+5561999999999"
+    assert parametros[4] == "contato@loja.com"
+    assert parametros[6] == "71929000"
+    assert parametros[8] == "DF"
+    assert parametros[9] == "2025-12-31"
+
+
+@pytest.mark.parametrize(
+    "campo, valor_invalido",
+    [
+        ("cnpj", "123"),
+        ("telefone", "999"),
+        ("email", "sem-arroba"),
+        ("cep", "1234"),
+        ("uf", "D"),
+        ("cadastro", "ontem"),
+    ],
+)
+def test_criar_cliente_com_campo_invalido(client, banco, campo, valor_invalido):
+    conexao = banco()
+
+    resposta = client.post(
+        "/api/clientes/",
+        {"id_cliente": "CLI9999", "razao_social": "Loja X", campo: valor_invalido},
+        format="json",
+    )
+
+    assert resposta.status_code == 400
+    assert conexao.commits == 0
+
+
+def test_atualizar_cliente_padroniza_campos(client, banco):
+    conexao = banco(linhas=[(1,)])
+
+    resposta = client.put(
+        "/api/clientes/CLI0001/", {"telefone": "61 99999-9999"}, format="json"
+    )
+
+    assert resposta.status_code == 200
+
+    _, parametros = conexao._cursor.consultas[-1]
+
+    assert parametros[0] == "+5561999999999"
+
+
+def test_atualizar_cliente_com_campo_invalido(client, banco):
+    banco()
+
+    resposta = client.put(
+        "/api/clientes/CLI0001/", {"cnpj": "123"}, format="json"
+    )
+
+    assert resposta.status_code == 400
