@@ -20,3 +20,14 @@ CREATE TABLE IF NOT EXISTS benchmark_clientes (
     endereco              TEXT,
     regiao_administrativa TEXT
 );
+
+CREATE TABLE IF NOT EXISTS auditoria_tratamento (
+    id_auditoria   SERIAL PRIMARY KEY,
+    id_cliente     VARCHAR(20) NOT NULL REFERENCES usuarios(id_cliente),
+    campo          VARCHAR(30) NOT NULL,
+    valor_original TEXT,
+    valor_tratado  TEXT,
+    criterio       VARCHAR(40),
+    fonte          VARCHAR(30),
+    tratado_em     TIMESTAMP DEFAULT NOW()
+);
