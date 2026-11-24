@@ -74,7 +74,8 @@ SQL_INSERIR = """
         %s, %s, %s, %s, %s, %s,
         %s, %s, %s, %s, %s
     )
-    ON CONFLICT (id_cliente) DO NOTHING
+    ON CONFLICT (id_cliente) DO UPDATE SET
+    SET bairro = COALESCE (EXCLUDED.bairro,usuarios.bairro),
 """
 
 CEP_ZERADO = "00000000"
