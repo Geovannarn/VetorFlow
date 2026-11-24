@@ -1,5 +1,5 @@
-import re
 
+import re
 
 EMAIL_REGEX = re.compile(
     r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
@@ -12,10 +12,17 @@ def normalizar_email(email):
 
     email = email.strip().lower()
 
-    if not email:
+    if not email or "@" not in email:
         return None
 
-    return email
+    usuario, dominio = email.rsplit("@", 1)
+
+    try:
+        dominio = dominio.encode("idna").decode("ascii")
+    except UnicodeError:
+        return None
+
+    return f"{usuario}@{dominio}"
 
 
 def validar_email(email):
