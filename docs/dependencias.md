@@ -24,5 +24,5 @@ O VetorFlow utiliza bibliotecas Python para processamento de dados, comunicaçã
 As dependências devem ser instaladas no ambiente virtual do projeto utilizando o arquivo de dependências localizado na raiz do repositório:
 
 ```powershell
-pip install -r NOME_DO_ARQUIVO_DE_DEPENDENCIAS
+pip install -r NOME DO ARQUIVO DE DEPENDENCIAS
 ```
