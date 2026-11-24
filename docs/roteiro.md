@@ -1,4 +1,26 @@
-campo é normalizado: CNPJ, telefone, e-mail, data, texto e CEP, cada um com o seu módulo.
+Bom dia a todos. Eu sou a Geovanna e vou apresentar o VetorFlow, o sistema que desenvolvi para o Desafio 1 do Projeto Integrador: tratamento, validação e enriquecimento de dados cadastrais.
+
+Em 15 minutos, vou mostrar o problema, como o sistema funciona, as decisões mais importantes, uma demonstração e o que ainda falta."
+
+2. O problema (1:45)
+
+"O cenário é a Distribuidora Vetor, uma atacadista fictícia que vende para varejistas. Depois de anos de operação, a base de clientes acumulou cadastros preenchidos por pessoas diferentes, sem padronização.
+
+O exemplo mais claro é o bairro. 'Águas Claras', 'Aguas claras' e 'AGUAS CLARAS' são o mesmo lugar, mas, em um relatório por região, viram três linhas separadas. Isso dilui a análise. Existe ainda uma subdivisão informal, como 'Norte (Águas Claras)', que não tem correspondência oficial garantida.
+
+Os outros campos têm o mesmo problema: CNPJ, telefone e data aparecem em formatos diferentes, e há CEPs ausentes, inválidos ou que não combinam com o bairro digitado. A base de teste tem 47 registros com essas inconsistências inseridas de propósito, incluindo um grupo de bairro, o Guará, sem nenhum CEP confiável."
+
+3. Objetivo e ideia central (1:00)
+
+"O objetivo foi construir um pipeline que recebe essa base, identifica as inconsistências e entrega uma base final limpa, guardada em banco de dados, com as decisões documentadas.
+
+Uma ideia guiou o projeto: nem tudo deve ser corrigido automaticamente. Em dados reais, parte do trabalho é decidir o que automatizar e o que deixar para uma pessoa revisar. Eu quis que o sistema fosse claro sobre isso."
+
+4. Arquitetura (2:00)
+
+"O fluxo tem etapas em sequência. O CSV passa primeiro por verificações de qualidade, que medem colunas ausentes, nulos e duplicados.
+
+Depois, cada campo é normalizado: CNPJ, telefone, e-mail, data, texto e CEP, cada um com o seu módulo.
 
 Em seguida vem o enriquecimento por CEP. Consulto o ViaCEP como fonte principal e a BrasilAPI como reserva, e guardo as respostas em um cache local. Isso evita consultas repetidas e faz o sistema continuar funcionando se uma das APIs cair.
 
