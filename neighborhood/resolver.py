@@ -2,7 +2,7 @@ from audit.logger import auditar_transformacao
 from neighborhood.normalizer import (
     formatar_para_exibicao,
     limpar_bairro,
-    normalizar_bairro,
+    normalizar_limpo,
 )
 
 
@@ -24,7 +24,12 @@ FONTE_REGRAS = "regras-de-tratamento.md"
 
 
 def preparar(bairro, id_registro=None):
-    chave = normalizar_bairro(bairro, id_registro)
+    limpo = limpar_bairro(bairro, id_registro)
+
+    if limpo is None:
+        return None, None
+
+    chave = normalizar_limpo(limpo, id_registro)
 
     if chave is None:
         return None, None
@@ -45,7 +50,7 @@ def preparar(bairro, id_registro=None):
 
         return chave, formatar_para_exibicao(chave, id_registro)
 
-    return chave, formatar_para_exibicao(limpar_bairro(bairro, id_registro), id_registro)
+    return chave, formatar_para_exibicao(limpo, id_registro)
 
 
 def esta_contido(menor, maior):

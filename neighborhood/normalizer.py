@@ -41,7 +41,7 @@ def remover_uf(bairro, id_registro=None):
             bairro,
             bairro[:achado.start()],
             f"Remoção do sufixo de UF '{achado.group(1).upper()}' (sigla válida presente em UFS)",
-            id_registro,
+            id_registro=id_registro,
         )
 
     return bairro
@@ -59,7 +59,8 @@ def remover_acentos(texto, id_registro=None):
     return _auditar(
         texto,
         tratado,
-        id_registro,
+        "Remoção de acentos (normalização Unicode NFKD)",
+        id_registro=id_registro,
     )
 
 
@@ -81,7 +82,8 @@ def limpar_bairro(bairro, id_registro=None):
     bairro = _auditar(
         bairro,
         unicodedata.normalize("NFC", bairro).strip(),
-        id_registro,
+        "Normalização Unicode (NFC) e remoção de espaços nas pontas",
+        id_registro=id_registro,
     )
 
     if not bairro:
@@ -102,7 +104,8 @@ def limpar_bairro(bairro, id_registro=None):
         bairro = _auditar(
             bairro,
             dentro_parenteses.group(1),
-            id_registro,
+            "Uso do conteúdo entre parênteses como nome do bairro",
+            id_registro=id_registro,
         )
 
     bairro = remover_uf(bairro, id_registro)
@@ -110,13 +113,15 @@ def limpar_bairro(bairro, id_registro=None):
     bairro = _auditar(
         bairro,
         re.sub(r"[^\w\s]", " ", bairro),
-        id_registro,
+        "Substituição de pontuação por espaço",
+        id_registro=id_registro,
     )
 
     bairro = _auditar(
         bairro,
         re.sub(r"\s+", " ", bairro).strip(),
-        id_registro,
+        "Colapso de espaços repetidos",
+        id_registro=id_registro,
     )
 
     if not bairro:
@@ -134,21 +139,27 @@ def limpar_bairro(bairro, id_registro=None):
     return bairro
 
 
+def normalizar_limpo(limpo, id_registro=None):
+    """Gera a chave de comparação a partir de um bairro já limpo."""
+    sem_acentos = remover_acentos(limpo, id_registro)
+
+    normalizado = _auditar(
+        sem_acentos,
+        sem_acentos.casefold(),
+        "Conversão para minúsculas (casefold) para formar a chave de comparação",
+        id_registro=id_registro,
+    )
+
+    return normalizado or None
+
+
 def normalizar_bairro(bairro, id_registro=None):
     limpo = limpar_bairro(bairro, id_registro)
 
     if limpo is None:
         return None
 
-    sem_acentos = remover_acentos(limpo, id_registro)
-
-    normalizado = _auditar(
-        sem_acentos,
-        sem_acentos.casefold(),
-        id_registro,
-    )
-
-    return normalizado or None
+    return normalizar_limpo(limpo, id_registro)
 
 
 def formatar_para_exibicao(nome, id_registro=None):
@@ -169,6 +180,7 @@ def formatar_para_exibicao(nome, id_registro=None):
     return _auditar(
         nome,
         formatado,
-        id_registro,
+        "Formatação para exibição (iniciais maiúsculas, numerais romanos em caixa alta)",
+        id_registro=id_registro,
         etapa="exibicao",
     )
