@@ -2,6 +2,16 @@ def verificar_colunas_obrigatorias(df, colunas):
     return [coluna for coluna in colunas if coluna not in df.columns]
 
 
+def _mascara_vazios(serie):
+    vazios = serie.isna()
+
+    if serie.dtype == object or str(serie.dtype) in ("string", "str"):
+        em_branco = serie.astype("string").str.strip().eq("").fillna(False)
+        vazios = vazios | em_branco.astype(bool)
+
+    return vazios
+
+
 def verificar_nulos(df, colunas):
     resultado = {}
 
@@ -9,13 +19,7 @@ def verificar_nulos(df, colunas):
         if coluna not in df.columns:
             continue
 
-        serie = df[coluna]
-        vazios = serie.isna()
-
-        if serie.dtype == object or str(serie.dtype) in ("string", "str"):
-            vazios = vazios | serie.astype("string").str.strip().eq("").fillna(False)
-
-        resultado[coluna] = int(vazios.sum())
+        resultado[coluna] = int(_mascara_vazios(df[coluna]).sum())
 
     return resultado
 
@@ -28,7 +32,12 @@ def verificar_duplicados(df, colunas_chave=None):
 
 
 def verificar_registros_vazios(df):
-    return int(df.isna().all(axis=1).sum())
+    if df.empty:
+        return 0
+
+    vazios = df.apply(_mascara_vazios)
+
+    return int(vazios.all(axis=1).sum())
 
 
 def executar_checks(df, colunas_obrigatorias, colunas_chave=None):

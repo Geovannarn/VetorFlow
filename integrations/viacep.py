@@ -22,6 +22,11 @@ def consultar_viacep(cep):
         resposta = requests.get(url, timeout=TIMEOUT)
 
         if resposta.status_code != 200:
+            logger.warning(
+                "ViaCEP respondeu com status %s para o CEP %s",
+                resposta.status_code,
+                cep,
+            )
             return None
 
         resultado = resposta.json()

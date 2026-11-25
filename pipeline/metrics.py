@@ -29,4 +29,6 @@ def calcular_metricas(df, checks):
             coluna: calcular_percentual(qtd, total_registros)
             for coluna, qtd in nulos_por_coluna.items()
         },
+        "colunas_avaliadas": list(nulos_por_coluna.keys()),
+        "nulos_por_coluna_quantidade": dict(nulos_por_coluna),
     }

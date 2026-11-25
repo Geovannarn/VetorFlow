@@ -21,7 +21,15 @@ def consultar_brasilapi(cep):
     try:
         resposta = requests.get(url, timeout=TIMEOUT)
 
+        if resposta.status_code == 404:
+            return None
+
         if resposta.status_code != 200:
+            logger.warning(
+                "BrasilAPI respondeu com status %s para o CEP %s",
+                resposta.status_code,
+                cep,
+            )
             return None
 
         resultado = resposta.json()

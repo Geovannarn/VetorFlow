@@ -80,7 +80,11 @@ def _decidir(bairro_informado, bairro_api, resultado, criterio, motivo, fonte, i
 
 def resolver_bairro(bairro_informado, bairro_api, id_registro=None):
     informado, nome_informado = preparar(bairro_informado, id_registro)
-    obtido_api, nome_api = preparar(bairro_api, id_registro)
+
+    if bairro_api is None:
+        obtido_api, nome_api = None, None
+    else:
+        obtido_api, nome_api = preparar(bairro_api, id_registro)
 
     if informado is None and obtido_api is None:
         return _decidir(

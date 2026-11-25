@@ -53,6 +53,9 @@ def buscar_cache(cep):
 
 
 def armazenar_cache(cep, resultado):
+    if not isinstance(resultado, dict) or not any(resultado.values()):
+        return
+
     cache = carregar_cache()
     cache[cep] = resultado
     salvar_cache(cache)
