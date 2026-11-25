@@ -1,6 +1,8 @@
 import re
 import unicodedata
 
+from audit.logger import auditar_transformacao
+
 
 UFS = {
     "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
@@ -12,57 +14,144 @@ SUFIXO_UF = re.compile(r"\s*[-/]\s*([A-Za-z]{2})$")
 PREPOSICOES = {"de", "da", "do", "das", "dos", "e"}
 ALGARISMOS_ROMANOS = re.compile(r"^(i{1,3}|iv|v|vi{1,3}|ix|x)$")
 
+CAMPO = "bairro"
+FONTE = "regras-de-tratamento.md"
 
-def remover_uf(bairro):
+
+def _auditar(valor_original, valor_tratado, criterio, id_registro=None, etapa="transformacao"):
+    if valor_original != valor_tratado:
+        auditar_transformacao(
+            campo=CAMPO,
+            valor_original=valor_original,
+            valor_tratado=valor_tratado,
+            criterio=criterio,
+            fonte=FONTE,
+            id_registro=id_registro,
+            etapa=etapa,
+        )
+
+    return valor_tratado
+
+
+def remover_uf(bairro, id_registro=None):
     achado = SUFIXO_UF.search(bairro)
 
     if achado and achado.group(1).upper() in UFS:
-        return bairro[:achado.start()]
+        return _auditar(
+            bairro,
+            bairro[:achado.start()],
+            f"Remoção do sufixo de UF '{achado.group(1).upper()}' (sigla válida presente em UFS)",
+            id_registro,
+        )
 
     return bairro
 
 
-def remover_acentos(texto):
-    texto = unicodedata.normalize("NFKD", texto)
+def remover_acentos(texto, id_registro=None):
+    decomposto = unicodedata.normalize("NFKD", texto)
 
-    return "".join(
+    tratado = "".join(
         caractere
-        for caractere in texto
+        for caractere in decomposto
         if not unicodedata.combining(caractere)
     )
 
+    return _auditar(
+        texto,
+        tratado,
+        id_registro,
+    )
 
-def limpar_bairro(bairro):
+
+def limpar_bairro(bairro, id_registro=None):
     if not isinstance(bairro, str):
+        auditar_transformacao(
+            campo=CAMPO,
+            valor_original=bairro,
+            valor_tratado=None,
+            criterio="Valor descartado: tipo não textual (esperado str)",
+            fonte=FONTE,
+            id_registro=id_registro,
+            etapa="validacao",
+        )
         return None
 
-    bairro = unicodedata.normalize("NFC", bairro).strip()
+    original = bairro
+
+    bairro = _auditar(
+        bairro,
+        unicodedata.normalize("NFC", bairro).strip(),
+        id_registro,
+    )
 
     if not bairro:
+        auditar_transformacao(
+            campo=CAMPO,
+            valor_original=original,
+            valor_tratado=None,
+            criterio="Valor descartado: texto vazio após remoção de espaços",
+            fonte=FONTE,
+            id_registro=id_registro,
+            etapa="validacao",
+        )
         return None
 
     dentro_parenteses = re.search(r"\(([^)]+)\)", bairro)
 
     if dentro_parenteses:
-        bairro = dentro_parenteses.group(1)
+        bairro = _auditar(
+            bairro,
+            dentro_parenteses.group(1),
+            id_registro,
+        )
 
-    bairro = remover_uf(bairro)
-    bairro = re.sub(r"[^\w\s]", " ", bairro)
-    bairro = re.sub(r"\s+", " ", bairro).strip()
+    bairro = remover_uf(bairro, id_registro)
 
-    return bairro or None
+    bairro = _auditar(
+        bairro,
+        re.sub(r"[^\w\s]", " ", bairro),
+        id_registro,
+    )
+
+    bairro = _auditar(
+        bairro,
+        re.sub(r"\s+", " ", bairro).strip(),
+        id_registro,
+    )
+
+    if not bairro:
+        auditar_transformacao(
+            campo=CAMPO,
+            valor_original=original,
+            valor_tratado=None,
+            criterio="Valor descartado: texto vazio após limpeza",
+            fonte=FONTE,
+            id_registro=id_registro,
+            etapa="validacao",
+        )
+        return None
+
+    return bairro
 
 
-def normalizar_bairro(bairro):
-    limpo = limpar_bairro(bairro)
+def normalizar_bairro(bairro, id_registro=None):
+    limpo = limpar_bairro(bairro, id_registro)
 
     if limpo is None:
         return None
 
-    return remover_acentos(limpo).casefold() or None
+    sem_acentos = remover_acentos(limpo, id_registro)
+
+    normalizado = _auditar(
+        sem_acentos,
+        sem_acentos.casefold(),
+        id_registro,
+    )
+
+    return normalizado or None
 
 
-def formatar_para_exibicao(nome):
+def formatar_para_exibicao(nome, id_registro=None):
     """'AGUAS CLARAS' / 'águas claras' -> 'Aguas Claras' / 'Águas Claras'."""
     palavras = nome.lower().split()
     resultado = []
@@ -75,4 +164,11 @@ def formatar_para_exibicao(nome):
         else:
             resultado.append(palavra.capitalize())
 
-    return " ".join(resultado)
+    formatado = " ".join(resultado)
+
+    return _auditar(
+        nome,
+        formatado,
+        id_registro,
+        etapa="exibicao",
+    )
