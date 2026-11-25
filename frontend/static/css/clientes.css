@@ -27,6 +27,17 @@
 .cli-barra .campo__entrada {
   flex: 1 1 16rem;
   max-width: 28rem;
+  padding: .55rem .75rem;
+  font: 400 1rem/1.4 var(--sans);
+  letter-spacing: normal;
+  border: 1px solid var(--cli-linha);
+  border-radius: 4px;
+}
+
+.cli-barra .campo__entrada:focus-visible {
+  border-color: var(--laranja);
+  outline: 2px solid var(--laranja);
+  outline-offset: 2px;
 }
 
 .cli-barra .aviso {
@@ -43,6 +54,11 @@
 .cli-tabela-wrap {
   overflow-x: auto;
   border: 1px solid var(--cli-linha);
+}
+
+.cli-tabela-wrap:focus-visible {
+  outline: 3px solid var(--laranja);
+  outline-offset: 3px;
 }
 
 .cli-tabela {
@@ -138,6 +154,7 @@
 .cli-dialogo {
   width: min(30rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   padding: 0;
   overflow: auto;
   color: var(--cli-texto, #111);
@@ -186,6 +203,33 @@
   gap: .375rem;
 }
 
+.cli-campo label,
+.cli-campo .campo__rotulo {
+  margin: 0;
+  font-size: .8125rem;
+  font-weight: 500;
+}
+
+.cli-dialogo .campo__entrada {
+  padding: .55rem .75rem;
+  font: 400 1rem/1.4 var(--sans);
+  letter-spacing: normal;
+  color: var(--cli-texto, #111);
+  background: #fff;
+  border: 1px solid var(--cli-linha, #ccc);
+  border-radius: 4px;
+}
+
+.cli-dialogo .campo__entrada:focus-visible {
+  border-color: var(--laranja);
+  outline: 2px solid var(--laranja);
+  outline-offset: 1px;
+}
+
+.cli-dialogo .campo__entrada[aria-invalid="true"] {
+  border-color: var(--erro);
+}
+
 .cli-campo .campo__erro,
 .cli-dialogo__form > .campo__erro {
   margin: 0;
@@ -202,10 +246,16 @@
   border-color: var(--cli-perigo, #b3261e);
 }
 
+.btn.cli-perigo:hover {
+  background: #8f1d17;
+}
+
 .btn:disabled {
   opacity: .6;
   cursor: progress;
 }
+
+/* ---------- benchmark ---------- */
 
 .secao--benchmark {
   --cli-linha: color-mix(in srgb, currentColor 16%, transparent);
@@ -244,7 +294,7 @@
 
 .bm-graficos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
   gap: 1.5rem;
   margin-top: 2.5rem;
 }

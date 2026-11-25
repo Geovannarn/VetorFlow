@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const VERSAO = 'v8';
+  const VERSAO = 'v9';
   const API_URL = '/api/clientes/';
 
   // Campos do cliente (o código é tratado à parte, só no cadastro).
@@ -51,7 +51,33 @@
       .split('; ')
       .find(cookie => cookie.startsWith('csrftoken='));
 
-    return item ? decodeURIComponent(item.split('=')[1]) : '';
+    if (item) return decodeURIComponent(item.split('=')[1]);
+
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+
+    const campo = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return campo ? campo.value : '';
+  }
+
+  // Transforma o corpo de um erro da API em texto legível.
+  function textoDoErro(dados, status) {
+    if (typeof dados === 'string' && dados.trim() && !dados.trim().startsWith('<')) {
+      return dados.trim();
+    }
+
+    if (dados && typeof dados === 'object') {
+      if (typeof dados.erro === 'string') return dados.erro;
+      if (typeof dados.detail === 'string') return dados.detail;
+
+      const partes = Object.entries(dados).map(([campo, valor]) =>
+        `${campo}: ${Array.isArray(valor) ? valor.join(' ') : valor}`
+      );
+
+      if (partes.length) return partes.join(' | ');
+    }
+
+    return `Erro HTTP ${status}`;
   }
 
   // Faz a chamada à API e devolve o JSON. Em caso de erro, lança uma exceção
@@ -83,9 +109,7 @@
     }
 
     if (!resposta.ok) {
-      const erro = new Error(
-        dados?.erro || dados?.detail || `Erro HTTP ${resposta.status}`
-      );
+      const erro = new Error(textoDoErro(dados, resposta.status));
       erro.status = resposta.status;
       throw erro;
     }
@@ -143,6 +167,14 @@
     }
   }
 
+  function abrirDialogo(dialogo) {
+    if (!dialogo.open) dialogo.showModal();
+  }
+
+  function fecharDialogo(dialogo) {
+    if (dialogo.open) dialogo.close();
+  }
+
 
   // ---------- Formatação ----------
 
@@ -172,6 +204,8 @@
   }
 
 
+  // ---------- Tabela ----------
+
   function criarBotao(texto, cliente, aoClicar) {
     const botao = criar(
       'button',
@@ -190,7 +224,7 @@
   function criarLinha(cliente) {
     const linha = criar('tr');
 
-    linha.append(criar('td', {}, cliente.id_cliente ?? '—'));
+    linha.append(criar('td', { class: 'cli-mono' }, cliente.id_cliente ?? '—'));
 
     CAMPOS.forEach(campo => {
       const valor = formatarValor(campo.nome, cliente[campo.nome]);
@@ -201,14 +235,18 @@
       linha.append(celula);
     });
 
-    const acoes = criar('td', { class: 'cli-acoes' });
+    // O flex fica numa div: aplicado direto no <td>, quebraria a tabela.
+    const acoes = criar('div', { class: 'cli-acoes' });
 
     acoes.append(
       criarBotao('Editar', cliente, () => abrirForm(cliente)),
       criarBotao('Excluir', cliente, () => abrirExcluir(cliente))
     );
 
-    linha.append(acoes);
+    const celulaAcoes = criar('td', { class: 'cli-col-acoes' });
+    celulaAcoes.append(acoes);
+
+    linha.append(celulaAcoes);
     return linha;
   }
 
@@ -278,6 +316,7 @@
   }
 
 
+  // ---------- Formulário (novo / editar) ----------
 
   function criarCampo(id, rotulo, atributos) {
     const grupo = criar('div', { class: 'cli-campo' });
@@ -299,13 +338,18 @@
         criarCampo('cli-c-id_cliente', 'Código do cliente', {
           name: 'id_cliente',
           type: 'text',
-          required: 'required'
+          required: 'required',
+          autocomplete: 'off'
         })
       );
     }
 
     CAMPOS.forEach(campo => {
-      const atributos = { name: campo.nome, type: campo.tipo || 'text' };
+      const atributos = {
+        name: campo.nome,
+        type: campo.tipo || 'text',
+        autocomplete: 'off'
+      };
 
       if (campo.tamanhoMaximo) atributos.maxlength = campo.tamanhoMaximo;
       if (campo.obrigatorio) atributos.required = 'required';
@@ -329,7 +373,10 @@
     montarFormulario(cliente);
     mostrarErroForm('');
 
-    $('#cli-dialogo').showModal();
+    abrirDialogo($('#cli-dialogo'));
+
+    const primeiro = $('#cli-campos input');
+    if (primeiro) primeiro.focus();
   }
 
   function coletarDados() {
@@ -368,7 +415,7 @@
   async function salvar(evento) {
     evento.preventDefault();
 
-    const alvo = editando; 
+    const alvo = editando;
     const dados = coletarDados();
 
     const problema = validar(dados, !alvo);
@@ -386,7 +433,7 @@
           await requisitar('POST', API_URL, dados);
         }
 
-        $('#cli-dialogo').close();
+        fecharDialogo($('#cli-dialogo'));
 
         if (await carregar()) {
           definirAviso(
@@ -404,6 +451,8 @@
   }
 
 
+  // ---------- Exclusão ----------
+
   function abrirExcluir(cliente) {
     excluindo = cliente;
 
@@ -411,7 +460,7 @@
       `Deseja realmente excluir "${nomeDe(cliente)}" (código ${cliente.id_cliente})?`;
 
     mostrarErroExcluir('');
-    $('#cli-confirmar').showModal();
+    abrirDialogo($('#cli-confirmar'));
   }
 
   async function excluir() {
@@ -423,7 +472,7 @@
       try {
         await requisitar('DELETE', urlDoCliente(alvo.id_cliente));
 
-        $('#cli-confirmar').close();
+        fecharDialogo($('#cli-confirmar'));
 
         if (await carregar()) {
           definirAviso('Cliente excluído com sucesso.');
@@ -437,6 +486,8 @@
   }
 
 
+  // ---------- Início ----------
+
   function iniciar() {
     if (!$('#clientes')) return;
 
@@ -445,10 +496,10 @@
     $('#cli-novo').addEventListener('click', () => abrirForm());
     $('#cli-busca').addEventListener('input', renderizar);
     $('#cli-form').addEventListener('submit', salvar);
-    $('#cli-cancelar').addEventListener('click', () => $('#cli-dialogo').close());
+    $('#cli-cancelar').addEventListener('click', () => fecharDialogo($('#cli-dialogo')));
     $('#cli-dialogo').addEventListener('close', () => { editando = null; });
     $('#cli-excluir').addEventListener('click', excluir);
-    $('#cli-cancelar-excluir').addEventListener('click', () => $('#cli-confirmar').close());
+    $('#cli-cancelar-excluir').addEventListener('click', () => fecharDialogo($('#cli-confirmar')));
     $('#cli-confirmar').addEventListener('close', () => { excluindo = null; });
 
     carregar();

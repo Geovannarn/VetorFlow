@@ -1,4 +1,3 @@
-# audit/logger.py
 import json
 import threading
 from datetime import datetime

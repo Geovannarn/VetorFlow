@@ -1,3 +1,4 @@
+(function () {
 'use strict';
 
 const $ = (seletor, raiz = document) => raiz.querySelector(seletor);
@@ -35,6 +36,9 @@ function criar(tag, atributos = {}, ...filhos) {
   for (const filho of filhos) if (filho != null) no.append(filho);
   return no;
 }
+
+
+/* ---------- Regras de limpeza ---------- */
 
 function limparCnpj(texto) {
   const d = soDigitos(texto);
@@ -110,7 +114,7 @@ function detectarTipo(nomeColuna) {
   if (n.includes('cnpj')) return 'cnpj';
   if (/(^|_)cep(_|$)/.test(n)) return 'cep';
   if (/(^|_)(telefone|fone|celular|whatsapp|tel)(_|$)/.test(n)) return 'telefone';
-  if (/(^|_)(data|dt)(_|$)/.test(n) || n.includes('nascimento')) return 'data';
+  if (/(^|_)(data|dt)(_|$)/.test(n) || n.includes('nascimento') || n.includes('cadastro')) return 'data';
   return null;
 }
 
@@ -120,6 +124,8 @@ function limparValor(tipo, bruto) {
   return REGRAS[tipo].limpar(texto);
 }
 
+
+/* ---------- CSV ---------- */
 
 function detectarDelimitador(texto) {
   const cont = { ',': 0, ';': 0, '\t': 0 };
@@ -258,6 +264,8 @@ function baixar(nomeArquivo, conteudo) {
 }
 
 
+/* ---------- Consulta de CEP ---------- */
+
 const CHAVE_CACHE = 'primora:cep:';
 const CHAVE_PREFERENCIA = 'primora:usar-cache';
 const VALIDADE_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -277,7 +285,7 @@ function lerCache(cep) {
     const bruto = localStorage.getItem(CHAVE_CACHE + cep);
     if (!bruto) return null;
     const item = JSON.parse(bruto);
-    if (Date.now() - item.salvoEm > VALIDADE_CACHE_MS) {
+    if (!item || !item.endereco || Date.now() - item.salvoEm > VALIDADE_CACHE_MS) {
       localStorage.removeItem(CHAVE_CACHE + cep);
       return null;
     }
@@ -372,6 +380,8 @@ async function resolverCep(cep, { usarCache, aoTentar }) {
 }
 
 
+/* ---------- Barras decorativas ---------- */
+
 function criarGerador(semente) {
   let a = semente >>> 0;
   return function () {
@@ -410,6 +420,8 @@ function desenharBarras(svg, cep) {
 
 function iniciarCep() {
   const form = $('#form-cep');
+  if (!form) return;
+
   const entrada = $('#cep');
   const erroCampo = $('#cep-erro');
   const chkCache = $('#usar-cache');
@@ -471,7 +483,7 @@ function iniciarCep() {
     $('#out-ibge').textContent = e.ibge || '—';
 
     fonte.textContent = resultado.fonte === 'cache'
-      ? 'Fonte: cache · ' + NOMES_FONTE[resultado.origem]
+      ? 'Fonte: cache · ' + (NOMES_FONTE[resultado.origem] || 'desconhecida')
       : 'Fonte: ' + NOMES_FONTE[resultado.fonte];
 
     desenharBarras($('#barras'), digitos);
@@ -530,11 +542,15 @@ function iniciarCep() {
 }
 
 
+/* ---------- Importação ---------- */
+
 const TAMANHO_MAXIMO = 5 * 1024 * 1024;
 const LINHAS_NA_PREVIA = 100;
 
 function iniciarImportacao() {
   const zona = $('#dropzone');
+  if (!zona) return;
+
   const campoArquivo = $('#arquivo');
   const aviso = $('#aviso-importacao');
   const secaoResultado = $('#resultado');
@@ -670,16 +686,18 @@ function iniciarImportacao() {
 }
 
 
+/* ---------- Menu ---------- */
+
 function iniciarMenu() {
   const links = Array.from(document.querySelectorAll('.menu a'));
-  const secoes = ['inicio', 'consulta', 'clientes', 'importacao']
+  const secoes = ['inicio', 'consulta', 'clientes', 'importacao', 'benchmark']
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   let agendado = false;
 
   function marcar(alvo) {
     links.forEach((a) => {
-      if (a.dataset.alvo === alvo) a.setAttribute('aria-current', 'true');
+      if (a.dataset.alvo === alvo) a.setAttribute('aria-current', 'location');
       else a.removeAttribute('aria-current');
     });
   }
@@ -711,6 +729,8 @@ function iniciarMenu() {
   atualizar();
 }
 
+
+/* ---------- Abertura (splash) ---------- */
 
 function iniciarSplash() {
   const splash = $('#splash');
@@ -762,9 +782,19 @@ function iniciarSplash() {
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
+/* ---------- Início ---------- */
+
+function iniciar() {
   iniciarSplash();
   iniciarMenu();
   iniciarCep();
   iniciarImportacao();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', iniciar);
+} else {
+  iniciar();
+}
+
+})();

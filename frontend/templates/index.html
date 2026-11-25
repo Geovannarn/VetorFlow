@@ -4,23 +4,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>primora. · Consulta de CEP e importação de clientes</title>
   <meta name="description" content="Consulta de CEP com ViaCEP, BrasilAPI e cache, e importação de clientes com limpeza de CNPJ, telefone, CEP e data.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
-  <link rel="stylesheet" href="{% static 'css/clientes.css' %}?v=5">
-  <script src="{% static 'css/js/script.js' %}?v=5" defer></script>
-  <script src="{% static 'css/js/clientes.js' %}?v=5" defer></script>
-  <script src="{% static 'css/js/benchmark.js' %}?v=1" defer></script>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'css/clientes.css' %}?v=6">
+  <script src="{% static 'css/js/script.js' %}?v=6" defer></script>
+  <script src="{% static 'css/js/clientes.js' %}?v=6" defer></script>
+  <script src="{% static 'css/js/benchmark.js' %}?v=6" defer></script>
 </head>
 <body>
 
   <!-- ========== ABERTURA ========== -->
   <div class="splash" id="splash">
-    <p class="splash__nome" aria-label="primora.">
+    <p class="splash__nome" role="img" aria-label="primora.">
       <span aria-hidden="true" style="--i:0">p</span><span aria-hidden="true" style="--i:1">r</span><span aria-hidden="true" style="--i:2">i</span><span aria-hidden="true" style="--i:3">m</span><span aria-hidden="true" style="--i:4">o</span><span aria-hidden="true" style="--i:5">r</span><span aria-hidden="true" style="--i:6">a</span><span class="splash__ponto" aria-hidden="true" style="--i:7">.</span>
     </p>
   </div>
@@ -30,7 +31,7 @@
   <header class="cabecalho">
     <a class="logo" href="#inicio" aria-label="primora, ir para o início">primora<span>.</span></a>
     <nav class="menu" aria-label="Principal">
-      <a href="#inicio" data-alvo="inicio" aria-current="true">Início</a>
+      <a href="#inicio" data-alvo="inicio" aria-current="location">Início</a>
       <a href="#consulta" data-alvo="consulta">Consulta</a>
       <a href="#clientes" data-alvo="clientes">Clientes</a>
       <a href="#importacao" data-alvo="importacao">Importação</a>
@@ -96,6 +97,7 @@
           <p class="lead">Tenta o ViaCEP até três vezes e recorre à BrasilAPI. O que já foi consultado fica em cache.</p>
 
           <form class="form" id="form-cep" novalidate>
+            {% csrf_token %}
             <label class="campo__rotulo" for="cep">CEP</label>
             <input class="campo__entrada" id="cep" name="cep" type="text"
                    inputmode="numeric" autocomplete="postal-code" spellcheck="false"
@@ -122,7 +124,7 @@
           </header>
 
           <div class="cartao__corpo" id="dados">
-            <p class="cartao__cep" aria-label="CEP">
+            <p class="cartao__cep" role="img" aria-label="CEP">
               <span id="cep-a">00000</span><b>-</b><span id="cep-b">000</span>
             </p>
             <p class="cartao__rua" id="out-rua">Aguardando consulta</p>
@@ -174,6 +176,7 @@
       <!-- Janela: novo / editar -->
       <dialog class="cli-dialogo" id="cli-dialogo" aria-labelledby="cli-dialogo-titulo">
         <form class="cli-dialogo__form" id="cli-form" novalidate>
+          {% csrf_token %}
           <h3 class="cli-dialogo__titulo" id="cli-dialogo-titulo">Novo cliente</h3>
           <div class="cli-campos" id="cli-campos"></div>
           <p class="campo__erro" id="cli-erro-form" role="alert" hidden></p>

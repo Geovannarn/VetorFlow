@@ -1,4 +1,3 @@
-# audit/middleware.py
 from audit.logger import registrar
 
 

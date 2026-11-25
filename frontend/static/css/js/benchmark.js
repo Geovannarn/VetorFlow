@@ -41,8 +41,12 @@
     return elemento;
   }
 
+  function ausente(valor) {
+    return valor === null || valor === undefined || valor === '' || Number.isNaN(Number(valor));
+  }
+
   function formatarNumero(valor, casas) {
-    if (valor === null || valor === undefined || Number.isNaN(Number(valor))) {
+    if (ausente(valor)) {
       return '—';
     }
 
@@ -58,6 +62,18 @@
     if (volume >= 1000) return (volume / 1000).toLocaleString('pt-BR') + ' mil';
 
     return String(volume);
+  }
+
+  function formatarData(valor) {
+    if (ausente(valor) && typeof valor !== 'string') return null;
+
+    const data = typeof valor === 'number' || /^\d+(\.\d+)?$/.test(String(valor))
+      ? new Date(Number(valor) * 1000)
+      : new Date(valor);
+
+    if (Number.isNaN(data.getTime())) return null;
+
+    return data.toLocaleString('pt-BR');
   }
 
   function volumesDe(resultados) {
@@ -95,13 +111,21 @@
     bloco.append(criar('p', titulo, 'bm-subtitulo'));
 
     const caixa = criar('div', null, 'cli-tabela-wrap');
+    caixa.tabIndex = 0;
+    caixa.setAttribute('role', 'region');
+    caixa.setAttribute('aria-label', titulo);
+
     const tabela = criar('table', null, 'cli-tabela');
 
     const cabecalho = criar('tr');
-    cabecalho.append(criar('th', 'Etapa'));
+    const thEtapa = criar('th', 'Etapa');
+    thEtapa.scope = 'col';
+    cabecalho.append(thEtapa);
 
     for (const volume of volumes) {
-      cabecalho.append(criar('th', rotuloVolume(volume)));
+      const th = criar('th', rotuloVolume(volume));
+      th.scope = 'col';
+      cabecalho.append(th);
     }
 
     const topo = criar('thead');
@@ -112,7 +136,9 @@
 
     for (const definicao of LINHAS_DAS_TABELAS) {
       const linhaTabela = criar('tr');
-      linhaTabela.append(criar('th', definicao.rotulo));
+      const rotulo = criar('th', definicao.rotulo);
+      rotulo.scope = 'row';
+      linhaTabela.append(rotulo);
 
       let temValor = false;
 
@@ -120,7 +146,7 @@
         const dados = acharLinha(resultados, definicao.etapa, definicao.variante, volume);
         const valor = dados ? dados[campo] : null;
 
-        if (valor !== null && valor !== undefined) temValor = true;
+        if (!ausente(valor)) temValor = true;
 
         linhaTabela.append(criar('td', formatarNumero(valor, casas), 'cli-mono'));
       }
@@ -156,9 +182,11 @@
     for (const linha of resultados) {
       const principal = ETAPAS_PRINCIPAIS.includes(linha.etapa);
 
-      if (principal && linha.volume === maior && !linha.ignorado && linha.ram_pico_mb !== null) {
-        if (picoMemoria === null || linha.ram_pico_mb > picoMemoria) {
-          picoMemoria = linha.ram_pico_mb;
+      if (principal && linha.volume === maior && !linha.ignorado && !ausente(linha.ram_pico_mb)) {
+        const valor = Number(linha.ram_pico_mb);
+
+        if (picoMemoria === null || valor > picoMemoria) {
+          picoMemoria = valor;
         }
       }
     }
@@ -175,7 +203,12 @@
     }
 
     if (transformacao) {
-      adicionarResumo(lista, 'Rejeitados', formatarNumero(transformacao.taxa_rejeicao_pct, 1) + '%', 'resumo__rejeitadas');
+      adicionarResumo(
+        lista,
+        'Rejeitados',
+        formatarNumero(transformacao.taxa_rejeicao_pct, 1) + '%',
+        'resumo__rejeitadas'
+      );
     }
   }
 
@@ -184,15 +217,19 @@
     area.replaceChildren();
 
     for (const grafico of graficos) {
+      if (!grafico || !grafico.url) continue;
+
+      const titulo = TITULOS_GRAFICOS[grafico.nome] || grafico.nome || 'Gráfico';
       const figura = criar('figure', null, 'bm-figura');
       const imagem = document.createElement('img');
+      const separador = grafico.url.includes('?') ? '&' : '?';
 
-      imagem.src = grafico.url + '?v=' + geradoEm;
-      imagem.alt = TITULOS_GRAFICOS[grafico.nome] || grafico.nome;
+      imagem.src = grafico.url + separador + 'v=' + encodeURIComponent(geradoEm ?? Date.now());
+      imagem.alt = titulo;
       imagem.loading = 'lazy';
 
       figura.append(imagem);
-      figura.append(criar('figcaption', TITULOS_GRAFICOS[grafico.nome] || grafico.nome));
+      figura.append(criar('figcaption', titulo));
       area.append(figura);
     }
   }
@@ -210,47 +247,69 @@
     aviso.classList.toggle('aviso--erro', ehErro);
   }
 
+  let carregando = false;
+
   async function carregar() {
+    if (carregando) return;
+
+    carregando = true;
+
+    const botao = $('#bm-atualizar');
+    if (botao) botao.disabled = true;
+
     mostrarAviso('Carregando resultados…', false);
 
-    let dados;
-
     try {
-      const resposta = await fetch(URL_DADOS, { headers: { Accept: 'application/json' } });
+      let dados;
 
-      if (!resposta.ok) {
-        throw new Error('Erro HTTP ' + resposta.status);
+      try {
+        const resposta = await fetch(URL_DADOS, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store'
+        });
+
+        if (!resposta.ok) {
+          throw new Error('Erro HTTP ' + resposta.status);
+        }
+
+        dados = await resposta.json();
+      } catch (erro) {
+        limparTela();
+        $('#bm-relatorio').hidden = true;
+        mostrarAviso('Não foi possível carregar o benchmark: ' + erro.message, true);
+        return;
       }
 
-      dados = await resposta.json();
-    } catch (erro) {
-      limparTela();
-      $('#bm-relatorio').hidden = true;
-      mostrarAviso('Não foi possível carregar o benchmark: ' + erro.message, true);
-      return;
+      const resultados = Array.isArray(dados.resultados) ? dados.resultados : [];
+      const graficos = Array.isArray(dados.graficos) ? dados.graficos : [];
+
+      if (!dados.existe || resultados.length === 0) {
+        limparTela();
+        $('#bm-relatorio').hidden = true;
+        mostrarAviso('Ainda não há resultados. No terminal, rode: python -m benchmark.executar', false);
+        return;
+      }
+
+      const volumes = volumesDe(resultados);
+
+      montarResumo(resultados, volumes);
+
+      const tabelas = $('#bm-tabelas');
+      tabelas.replaceChildren();
+      tabelas.append(montarTabela(resultados, volumes, 'Tempo (segundos)', 'tempo_s', 2));
+      tabelas.append(montarTabela(resultados, volumes, 'Registros por segundo', 'registros_por_s', 0));
+      tabelas.append(montarTabela(resultados, volumes, 'Pico de memória (MB)', 'ram_pico_mb', 0));
+
+      montarGraficos(graficos, dados.gerado_em);
+
+      $('#bm-relatorio').hidden = false;
+
+      const quando = formatarData(dados.gerado_em);
+      mostrarAviso(quando ? 'Resultados gerados em ' + quando + '.' : 'Resultados carregados.', false);
+    } finally {
+      carregando = false;
+      if (botao) botao.disabled = false;
     }
-
-    if (!dados.existe) {
-      limparTela();
-      $('#bm-relatorio').hidden = true;
-      mostrarAviso('Ainda não há resultados. No terminal, rode: python -m benchmark.executar', false);
-      return;
-    }
-
-    const volumes = volumesDe(dados.resultados);
-
-    montarResumo(dados.resultados, volumes);
-
-    const tabelas = $('#bm-tabelas');
-    tabelas.replaceChildren();
-    tabelas.append(montarTabela(dados.resultados, volumes, 'Tempo (segundos)', 'tempo_s', 2));
-    tabelas.append(montarTabela(dados.resultados, volumes, 'Registros por segundo', 'registros_por_s', 0));
-    tabelas.append(montarTabela(dados.resultados, volumes, 'Pico de memória (MB)', 'ram_pico_mb', 0));
-
-    montarGraficos(dados.graficos, dados.gerado_em);
-
-    $('#bm-relatorio').hidden = false;
-    mostrarAviso('Resultados gerados em ' + new Date(dados.gerado_em * 1000).toLocaleString('pt-BR') + '.', false);
   }
 
   function iniciar() {
