@@ -423,12 +423,7 @@ A apresentação deve seguir uma sequência que permita ao avaliador enxergar o 
 | 7 | Interface web | Gerenciamento dos clientes |
 | 8 | API REST | GET, POST, PUT e DELETE |
 
-**Orientação importante:** durante a demonstração, não tente explicar cada arquivo do código. Mostre o fluxo funcionando e abra os módulos relevantes quando precisar justificar uma decisão técnica.
-
-O objetivo é demonstrar domínio da solução, não fazer uma leitura do código-fonte.
 
 # 16. Encerramento da apresentação
-
-Uma frase para finalizar, caso queira dar um fechamento mais marcante:
 
 > "O VetorFlow nasceu de um problema de inconsistência cadastral, mas sua construção exigiu pensar em algo maior: como garantir que uma transformação de dados seja não apenas executada, mas também justificada, rastreada e compreendida. Esse foi o princípio que orientou o desenvolvimento do projeto."
