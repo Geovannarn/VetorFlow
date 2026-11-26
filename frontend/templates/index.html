@@ -15,7 +15,9 @@
   <link rel="stylesheet" href="{% static 'css/clientes.css' %}?v=6">
   <script src="{% static 'css/js/script.js' %}?v=6" defer></script>
   <script src="{% static 'css/js/clientes.js' %}?v=6" defer></script>
-  <script src="{% static 'css/js/benchmark.js' %}?v=6" defer></script>
+  <script src="https://unpkg.com/globe.gl" defer></script>
+  <script src="{% static 'css/js/benchmark-globo.js' %}?v=2" defer></script>
+  <script src="{% static 'css/js/benchmark.js' %}?v=7" defer></script>
 </head>
 <body>
 
@@ -305,9 +307,31 @@
 
       <dl class="resumo" id="bm-resumo"></dl>
 
-      <div id="bm-tabelas"></div>
+      <div class="bmg" id="bm-globo">
+        <div class="bmg__palco-wrap">
+          <div class="bmg__palco" role="img"
+               aria-label="Globo interativo com as etapas do VetorFlow ligadas por arcos; a espessura mostra a vazão e a cor mostra os registros rejeitados"></div>
+          <article class="cartao bmg__painel" id="bmg-painel" aria-live="polite"></article>
+        </div>
 
-      <div class="bm-graficos" id="bm-graficos"></div>
+        <div class="bmg__controles">
+          <button class="btn btn--contorno" type="button" id="bmg-play" aria-pressed="false">Reproduzir</button>
+          <label class="sr-only" for="bmg-slider">Volume de registros</label>
+          <input class="bmg__slider" id="bmg-slider" type="range" min="0" max="4" step="1" value="0">
+          <output class="bmg__volume" id="bmg-volume" for="bmg-slider"></output>
+        </div>
+
+        <div class="bmg__etapas" id="bmg-etapas" aria-label="Etapas do pipeline"></div>
+
+        <p class="bmg__legenda aviso">
+          <span>Arco mais grosso e rápido = maior vazão</span>
+          <span>Arco mais vermelho = mais rejeitados</span>
+          <span>Anel pulsante = gargalo</span>
+        </p>
+        <p class="aviso" id="bmg-origem"></p>
+      </div>
+
+      <div id="bm-tabelas"></div>
 
     </section>
 

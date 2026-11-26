@@ -1,0 +1,55 @@
+/* Globo do benchmark — usa só currentColor e as classes que já existem
+   (.cartao, .meta, .btn, .aviso), então herda as cores do style.css. */
+
+.bmg {
+  --bmg-linha: color-mix(in srgb, currentColor 18%, transparent);
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.bmg__palco-wrap {
+  position: relative;
+  border: 1px solid var(--bmg-linha);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bmg__palco {
+  width: 100%;
+  height: clamp(360px, 62vh, 640px);
+  cursor: grab;
+}
+.bmg__palco:active { cursor: grabbing; }
+
+.bmg__painel {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: min(300px, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow: auto;
+}
+.bmg__painel .cartao__corpo { padding-top: .75rem; }
+.bmg__painel .meta { margin: 0; }
+.bmg__titulo { margin: 0 0 .5rem; font-weight: 600; }
+.bmg__dica { margin: 0; opacity: .7; }
+.bmg__selo-gargalo { color: var(--bmg-perigo, inherit); font-weight: 600; }
+
+.bmg__controles {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.bmg__slider { flex: 1 1 220px; min-width: 160px; }
+.bmg__volume { min-width: 7ch; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.bmg__etapas { display: flex; flex-wrap: wrap; gap: .5rem; }
+.bmg__etapas .btn[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.bmg__legenda { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 0; opacity: .75; }
+
+@media (max-width: 640px) {
+  .bmg__painel { position: static; width: auto; max-height: none; border-radius: 0; }
+}
