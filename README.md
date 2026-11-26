@@ -8,7 +8,7 @@ Desafio 1 · Empresa Primora · Projeto Integrador Bolsa Futuro Digital
 
 <br>
 
-<img src="imagens/Tela%20de%20inicio.png" alt="Tela inicial do VetorFlow" width="820">
+<img src="docs/imagens/Tela%20de%20inicio.png" alt="Tela inicial do VetorFlow" width="820">
 
 </div>
 
@@ -36,7 +36,7 @@ Desafio 1 · Empresa Primora · Projeto Integrador Bolsa Futuro Digital
 
 ## Sobre o projeto
 
-O VetorFlow é uma solução de ETL desenvolvida para o primeiro desafio proposto pela Empresa Primora. O objetivo é receber dados brutos e inconsistentes, tratá-los, padronizá-los e enriquecê-los, e então carregá-los em um banco de dados confiável, pronto para consulta e análise.
+O VetorFlow é uma solução de ETL desenvolvida para o primeiro desafio proposto pela Empresa Primora à Distribuidora Vetor. O objetivo é receber dados brutos e inconsistentes, tratá-los, padronizá-los e enriquecê-los, e então carregá-los em um banco de dados confiável, pronto para consulta e análise.
 
 A aplicação inclui uma interface web para acompanhar a execução do pipeline, consultar os registros tratados e avaliar os resultados e o desempenho de cada processamento.
 
@@ -64,23 +64,23 @@ Registro de auditoria das execuções
 
 ### Tela inicial
 
-![Tela inicial](imagens/Tela%20de%20inicio.png)
+![Tela inicial](docs/imagens/Tela%20de%20inicio.png)
 
 ### Extração do pipeline
 
-![Extração do pipeline](imagens/extra%C3%A7%C3%A3o-pipeline.png)
+![Extração do pipeline](docs/imagens/extra%C3%A7%C3%A3o-pipeline.png)
 
 ### Pipeline
 
-![Pipeline](imagens/pipeline.png)
+![Pipeline](docs/imagens/pipeline.png)
 
 ### Registros
 
-![Registros](imagens/Registros%20VetorFlow.png.png)
+![Registros](docs/imagens/Registros%20VetorFlow.png)
 
 ### Resultados
 
-![Resultados](imagens/Resultados-VetorFlow.png.png)
+![Resultados](docs/imagens/Resultados-VetorFlow.png)
 
 ---
 
@@ -117,7 +117,7 @@ Extração  →  Transformação  →  Enriquecimento  →  Carga  →  API e In
 VetorFlow/
 ├── config/                   Configurações do projeto Django (settings, urls)
 ├── docs/                     Documentação técnica
-├── imagens/                  Capturas de tela utilizadas neste README
+│   └── imagens/              Capturas de tela utilizadas neste README
 ├── manage.py
 ├── requirements.txt
 └── README.md
@@ -235,7 +235,7 @@ As regras aplicadas a cada campo estão documentadas em [`docs/regras-de-tratame
 
 A tela de desempenho apresenta as métricas de cada execução do pipeline.
 
-![Desempenho](imagens/Desempenho%20-VetorFlow.png.png)
+![Desempenho](docs/imagens/Desempenho%20-VetorFlow.png)
 
 ---
 
